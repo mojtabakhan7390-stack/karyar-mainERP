@@ -1,1242 +1,1157 @@
 <div class="cover">
-<h1 class="title">معماری پایه Karyar</h1>
+<h1 class="title">معماری Karyar</h1>
 <p class="subtitle">ERPNext + Karyar Agent Platform</p>
-<p class="meta">سند طراحی معماری — نسخه ۰٫۱ (پیش‌نویس برای بازبینی) — مهر ۱۴۰۵ / اکتبر ۲۰۲۶</p>
-<p class="meta">وضعیت: <b>پیشنهادی</b>. هیچ تصمیمی در این سند نهایی نیست، مگر در بخش «اصول تأییدشده».</p>
+<p class="meta">سند معماری — نسخه ۱٫۰ (بازبینی و به‌روزرسانی نهایی) — مهر ۱۴۰۵ / اکتبر ۲۰۲۶</p>
+<p class="meta">این نسخه همه تصمیم‌های CR-01 تا CR-04 و تصمیم‌های قطعی بازبینی نهایی را یکپارچه کرده است.</p>
 </div>
 
 ## فهرست
 
-- بخش صفر: خلاصه اجرایی و وضعیت فعلی مخزن
+- بخش صفر: خلاصه اجرایی، وضعیت مخزن، تصمیم‌های قطعی
 - بخش ۱ تا ۳۰: معماری
-- بخش ۳۱: شش مثال سرتاسری
+- بخش ۳۱: مثال‌های سرتاسری
 - بخش ۳۲: جدول تصمیم‌های معماری
-- بخش ۳۳: تعارض‌ها و محدودیت‌هایی که باید صریح گفته شوند
+- بخش ۳۳: تعارض‌های حل‌شده و تنش‌های باقی‌مانده
 - بخش ۳۴: خروجی نهایی و نقشه راه
 
 ---
 
-# بخش صفر — خلاصه اجرایی و وضعیت فعلی مخزن
+# بخش صفر — خلاصه اجرایی
 
-## ۰.۱ خلاصه در یک پاراگراف
+## ۰.۱ Karyar در یک پاراگراف
 
-Karyar یک **سکوی ایجنت (Agent Platform)** است که روی ERPNext قرار می‌گیرد. ERPNext منبع حقیقت (Source of Truth) داده‌های کسب‌وکار است: مشتری، سفارش، انبار و حسابداری. Karyar چهار کار انجام می‌دهد:
+Karyar یک پلتفرم **ERP + AI Agents** است.
 
-- **پیام‌ها را می‌گیرد** و آن‌ها را به گفت‌وگوهای استاندارد تبدیل می‌کند.
-- **پرونده‌های کاری را جلو می‌برد**: هر پرونده (Workflow Run) طبق یک «تعریف فرایند» قابل‌پیکربندی حرکت می‌کند.
-- **ایجنت‌ها را داخل این پرونده‌ها به کار می‌گیرد**: ایجنت‌ها فقط از طریق «ابزارهای کنترل‌شده» با ERPNext کار می‌کنند.
-- **انسان را در نقاط تعریف‌شده وارد می‌کند**: گفت‌وگومحور و ثبت‌شده.
+**ERPNext موتور اصلی منطق و داده کسب‌وکار است** و منبع نهایی حقیقت (Final Source of Truth) باقی می‌ماند. Karyar **ERP دوم نیست.** نقش آن لایه هوشمند، کنترل‌کننده و رابط است و این بخش‌ها را در بر می‌گیرد:
 
-انتقال کار بین ایجنت‌ها **همیشه** از راه رویداد و تغییر وضعیت پرونده است، نه گفت‌وگوی آزاد بین هوش‌های مصنوعی.
+- ایجنت‌ها و اجرای آن‌ها (Agent Runtime)
+- گفت‌وگوی زنده
+- Workspace مشترک انسان و ایجنت
+- کنترل، مجوز، ممیزی و ثبت مصرف AI
+- نگهداری وضعیت فرایند
 
-دسترسی‌ها در لایه‌ای **مستقل از مدل هوش مصنوعی** اعمال می‌شوند و نهایتاً به همان سیستم مجوز Frappe می‌رسند.
+**n8n فقط هماهنگی گام‌ها (Orchestration) و اجرای Integrationها را انجام می‌دهد.** هر تصمیم کسب‌وکاری، مجوز و عملیات نهایی از Karyar می‌گذرد و در نهایت با منطق استاندارد خود ERPNext ثبت می‌شود.
 
-## ۰.۲ وضعیت فعلی مخزن (یافته‌های بررسی)
+**اصل راهنمای کل سند:**
+
+> هر کاری که ERPNext به‌صورت امن، استاندارد و قابل اتکا انجام می‌دهد، به ERPNext سپرده می‌شود. Karyar فقط در جایی منطق اضافه می‌کند که برای Agent، AI یا کنترل واقعاً لازم است.
+
+## ۰.۲ وضعیت فعلی مخزن
 
 | مورد | یافته |
 |---|---|
-| مخزن | `karyar-mainERP`، یک fork مستقیم از `frappe/erpnext` |
-| شاخه و commit | `claude/keen-hypatia-07r3hv`، برابر با `develop` در commit ‏`3257b70` |
-| نسخه ERPNext | `17.0.0-dev`، یعنی شاخه توسعه و **ناپایدار** |
-| نسخه Frappe مورد نیاز | `>=17.0.0-dev,<18` (خود Frappe در مخزن نیست) |
-| Python / Node | Python ‏3.14 یا بالاتر، Node ‏24 |
-| اپ‌های موجود | فقط `erpnext` و یک SPA بانکداری با React (`banking/`). اپ‌های frappe، hrms و Karyar در مخزن نیستند |
-| سفارشی‌سازی Karyar | **هیچ‌چیز.** کلمه «karyar» در کد وجود ندارد و همه commitها از Frappe هستند |
-| حجم کد | حدود ۴۳۰ هزار خط Python و ۸۷ هزار خط JS، در ۲۱ ماژول |
-| وابستگی‌های Python | `rapidfuzz`، `holidays`، `pdfplumber`، `mt-940`، `plaid-python` و چند مورد دیگر |
+| مخزن | `karyar-mainERP`؛ fork مستقیم `frappe/erpnext` |
+| شاخه پایه | `develop` (نسخه `17.0.0-dev`، ناپایدار) |
+| وابستگی‌ها | Frappe ‏`>=17.0.0-dev,<18`، Python ‏3.14 یا بالاتر، Node ‏24 |
+| سفارشی‌سازی Karyar | هیچ؛ فقط مستندات در `docs/karyar/` |
+| حجم | حدود ۴۳۰ هزار خط Python و ۸۷ هزار خط JS؛ ۲۱ ماژول |
 
-**نقاط توسعه موجود** (یعنی جاهایی که Karyar می‌تواند بدون دست زدن به هسته وصل شود):
+**نقاط توسعه استانداردی که Karyar از آن‌ها استفاده می‌کند:**
 
-| نقطه توسعه | کاربرد برای Karyar |
-|---|---|
-| `doc_events` (از جمله `"*"` برای همه DocTypeها) | گرفتن رویدادهای ERPNext |
-| `scheduler_events` و صف‌های سفارشی RQ (کلید `workers` در `common_site_config`) | اجرای ایجنت‌ها و کارهای پس‌زمینه |
-| `frappe.db.after_commit` و `enqueue(..., enqueue_after_commit=True)` | انتشار مطمئن رویداد، **فقط بعد از** commit تراکنش |
-| `has_permission`، `permission_query_conditions`، User Permission و permlevel | کنترل دسترسی در سطح سند، رکورد و فیلد |
-| `extend_doctype_class` و `override_doctype_class` | توسعه رفتار DocTypeهای ERPNext بدون تغییر هسته |
-| `regional_overrides` و `naming_series_variables` | بومی‌سازی ایران، مثلاً شماره‌گذاری جلالی |
-| `setup_wizard_stages`، `boot_session` و `jinja` | نصب، بارگذاری اولیه و قالب‌های چاپ |
-| Frappe Workflow (در v16 با Transition Task)، Assignment Rule، Notification | امکانات آماده برای گردش سند و تخصیص کار |
-| Webhook با امضای HMAC (`X-Frappe-Webhook-Signature`)، OAuth Client، API نسخه ۱ و ۲ | اتصال به سیستم‌های بیرونی |
-| Version، Access Log، Error Log، RQ Job | پایه ردیابی و ممیزی |
-| Socket.io و `publish_realtime` | پخش پاسخ‌های بلادرنگ در رابط کاربری |
+- `doc_events`
+- DocType ‏Webhook با امضای HMAC
+- `scheduler_events` و صف‌های سفارشی RQ
+- `frappe.db.after_commit`
+- `has_permission`، `permission_query_conditions`، User Permission و permlevel
+- `extend_doctype_class`
+- Custom Field و Property Setter به‌صورت fixture
+- `override_doctype_dashboards`
+- `regional_overrides` و `naming_series_variables`
+- `ToDo` و `assign_to`، Assignment Rule، Notification
+- Email Account، SMS Settings، `Communication` (با medium‌های Chat، SMS و Phone)
+- `Version` (track changes)
+- OAuth Client
+- `publish_realtime`
 
-**محدودیت‌هایی که روی طراحی اثر می‌گذارند:**
+**محدودیت‌هایی که بر طراحی اثر دارند:**
 
-1. **Frappe Workflow فقط ماشین حالتِ یک سند است.** گردش بین چند سند، تایمر، تأیید موازی «۲ از ۳» و گام ایجنت ندارد.
-2. **`frappe.get_all` مجوزها را نادیده می‌گیرد.** ابزارهای ایجنت **نباید** از آن استفاده کنند.
-3. **سرور Frappe همگام (WSGI) است.** فراخوانی‌های طولانی مدل زبانی نباید در پروسه وب اجرا شوند و باید به Workerها بروند.
-4. **چارت حساب فقط از پوشه خود ERPNext بارگذاری می‌شود.** برای چارت ایرانی باید از `create_charts(custom_chart=...)` استفاده شود.
-5. **برخی گزارش‌های استاندارد با SQL خام نوشته شده‌اند** و کنترل دسترسی آن‌ها فقط در سطح نقش (Role) است. پس فقط فهرستی گزینش‌شده از گزارش‌ها باید در اختیار ایجنت قرار گیرد.
+1. **Frappe Workflow ماشین حالتِ تک‌سند است.** پیش از وجود سند کار نمی‌کند، تأیید «M از N» ندارد و تأیید را به hash محتوا گره نمی‌زند.
+2. **`frappe.get_all` مجوزها را نادیده می‌گیرد.**
+3. **سرور Frappe همگام (WSGI) است.** فراخوانی‌های طولانی مدل AI باید در Worker اجرا شوند.
+4. **چارت حساب فقط از پوشه ERPNext بارگذاری می‌شود.** راه حل: `create_charts(custom_chart=…)`.
+5. **برخی گزارش‌ها SQL خام دارند و مجوزشان فقط بر اساس Role است.** پس فقط فهرست گزینش‌شده‌ای از گزارش‌ها در دسترس ایجنت قرار می‌گیرد.
 6. **ERPNext نسخه ۱۶ روی PostgreSQL پشتیبانی رسمی ندارد.**
+7. **Contact در v16 فقط فیلدهای تلفن و ایمیل دارد** (`phone_nos`، `email_ids`، `mobile_no`، `unsubscribed`). Lead فیلد `whatsapp_no` دارد. برای Telegram، Instagram و بله فیلد استانداردی وجود ندارد.
 
-> **تعارض با چشم‌انداز:** این مخزن خودِ ERPNext است. کد Karyar نباید داخل آن نوشته شود، چون این کار عملاً تغییر هسته است و هر ارتقا را دردناک می‌کند. بخش ۲۳ ساختار درست مخزن‌ها را پیشنهاد می‌دهد. این سند فعلاً موقتاً در همین مخزن (`docs/karyar/`) قرار گرفته است.
+> **نکته ساختاری:** کد Karyar نباید داخل این fork نوشته شود. بخش ۲۳ ساختار درست مخازن را آورده است. این سند موقتاً در `docs/karyar/` نگهداری می‌شود.
+
+## ۰.۳ تصمیم‌های قطعی (مبنای این نسخه)
+
+| حوزه | تصمیم |
+|---|---|
+| نقش ERPNext | موتور اصلی منطق و داده کسب‌وکار و منبع نهایی حقیقت. **ERPNext-first:** هرجا قابلیت استاندارد دارد، همان استفاده می‌شود |
+| نقش Karyar | ایجنت، گفت‌وگو، Workspace انسانی، کنترل، مجوز، ممیزی، مصرف AI، و وضعیت فرایند |
+| نقش n8n | **فقط** هماهنگی گام‌ها و اجرای Automation و Integration |
+| در کنترل Karyar | گفت‌وگوی زنده، اجرای ایجنت، تصمیم کسب‌وکاری، مجوز، Human Task، عملیات نهایی |
+| Human Task | Workspace مشترک انسان و ایجنت. مبتنی بر گفت‌وگو. انسان می‌تواند تغییر دهد، Pause/Resume کند، واگذار کند، جلو/عقب ببرد و از ایجنت‌های دیگر کمک بگیرد |
+| تغییرهای حساس | **پیشنهاد تغییر (Change Proposal) با Diff**؛ ثبت فقط پس از تأیید صریح انسان |
+| نسخه‌داری و ممیزی | همه تغییرها، تأییدها، تصمیم‌ها و واگذاری‌ها |
+| تأیید (Approval) | از فاز ۱: تک‌نفره، چندنفره، M از N، ترتیبی و موازی |
+| واگذاری بین ایجنت‌ها | داخل Karyar. اختیار کار واگذارشده هرگز بیشتر از Principal اولیه نیست |
+| مجوز | در کد، با زنجیره Tenant → Principal/User → Agent → Responsibility → Capability → Workflow Step → ERPNext Permission. **Prompt هرگز مجوز یا تأیید ایجاد نمی‌کند** |
+| داده | بدون دسترسی خام به پایگاه داده یا SQL دلخواه. گزارش‌ها از ERPNext Report و ابزارهای کنترل‌شده |
+| مصرف AI | ثبت برای Tenant، Agent، Workflow، User و Task |
+| چندمستأجری | جداسازی Tenantها. Credential و Integrationها Tenant-aware و امن |
+| RPA | فقط برای سیستم‌های بدون API. **هرگز برای ERPNext.** کپچا و OTP به Human Task می‌روند |
+| کانال‌های مشتری | در CRM/ERP. برای کانال‌هایی که فیلد استاندارد ندارند، جدول فرزند سفارشی `Contact Channel` روی Contact. **`Contact Identity` حذف شد** |
+| اجرای خودکار | فقط بر اساس Policy از پیش تعریف‌شده و قابل ممیزی. ایجنت تصمیم یا اختیار جدید نمی‌سازد |
+| پیش‌ثبت (Draft) | به‌صورت پیش‌فرض فقط در Karyar. سند نهایی کسب‌وکار قبل از تأیید در ERPNext ساخته نمی‌شود. پیش‌نویس در ERPNext فقط به‌عنوان قابلیت اختیاری و کنترل‌شده |
+| Preview و Re-Approval | hash پیش‌نمایش، تأیید، و تأیید مجدد در صورت تغییر داده مهم |
+| پس از ثبت نهایی | داده اصلی فقط از ERPNext خوانده می‌شود. Karyar فقط فرایند، Context و ممیزی خود را نگه می‌دارد |
+| مرز Tenant | Tenant همان مرز کسب‌وکار یا پروژه است. محدوده‌هایی مثل شعبه با User Permission کنترل می‌شوند |
 
 ---
 
 # ۱. نمای کلی معماری
 
-Karyar از **چهار لایه منطقی** ساخته می‌شود. یک لایه **عمودی** هم از همه آن‌ها عبور می‌کند:
+Karyar از **چهار لایه** و یک **لایه عمودی** ساخته می‌شود:
 
-1. **لایه تعامل:** کانال‌ها (وب‌سایت، تلگرام، بله، واتس‌اپ و…) به‌علاوه «میز کار کاریار» (Karyar Workspace) برای کارکنان. همه این‌ها به «درگاه کانال» (Channel Gateway) وصل می‌شوند. وظیفه درگاه این است که پیام هر کانال را به یک پیام استاندارد تبدیل کند.
-2. **لایه هوشمندی و فرایند:**
-   - **موتور گردش‌کار** (Workflow Engine): تعیین می‌کند **چه کاری** و **کِی** انجام شود.
-   - **اجراکننده ایجنت** (Agent Runtime): تعیین می‌کند **چطور** آن کار با زبان طبیعی و به‌صورت هوشمند انجام شود.
-   - **سرویس کار انسانی** (Human Task Service): مدیریت تعامل انسان در گردش‌کار.
-   - **سرویس گفت‌وگو** (Conversation Service).
-3. **لایه کنترل:**
-   - **رجیستری توانمندی و ابزار:** فهرست کارهایی که ایجنت مجاز است انجام دهد.
-   - **موتور سیاست/مجوز** (Policy Engine).
-   - **اجراکننده ابزار** (Tool Executor).
-   - **API پایدار کاریار** (Karyar API v1).
-   - **گذرگاه رویداد** (Event Bus).
-   - **درگاه مدل هوش مصنوعی** (AI Gateway).
-4. **لایه داده و عملیات:** ERPNext، HRMS و `karyar_iran` روی Frappe. این تنها منبع حقیقت داده‌های کسب‌وکار است.
-- **لایه عمودی:** ممیزی، ردیابی، مصرف هوش مصنوعی و امنیت.
-- **بیرون از هسته:** n8n برای یکپارچه‌سازی‌ها، Workerهای RPA و سرویس‌های بیرونی.
+1. **لایه تعامل:**
+   - کانال‌های مشتری: ویجت وب، پیام‌رسان‌ها، و در آینده صوت
+   - **Karyar Workspace** برای کارکنان
+   - همه از طریق **درگاه کانال (Channel Gateway)** داخل Karyar
+2. **لایه هوشمندی و کار انسانی** (داخل Karyar):
+   - اجرای ایجنت (Agent Runtime)
+   - گفت‌وگو (Conversation)
+   - Human Task Workspace
+   - پیشنهاد تغییر (Change Proposal)
+   - درخواست تأیید (Approval Request)
+   - کار واگذارشده (Agent Task)
+   - پرونده (Karyar Case)
+3. **لایه کنترل** (داخل Karyar):
+   - موتور سیاست و مجوز (Policy/Permission Engine)
+   - اجراکننده ابزار (Tool Executor)
+   - رجیستری توانمندی و ابزار
+   - گام ثبت نهایی (Promote)
+   - Karyar API v1
+   - انتشار رویداد
+   - درگاه AI (AI Gateway)
+4. **لایه داده و منطق کسب‌وکار:** ERPNext، HRMS و `karyar_iran` روی Frappe. این لایه **منبع نهایی حقیقت** است.
 
-**ایده محوری:** «Karyar فرایند را تعریف می‌کند؛ هوش مصنوعی درون فرایند هوشمندانه کار می‌کند.» گردش‌کار **قطعی (deterministic)** و قابل ممیزی است. ایجنت **احتمالاتی (probabilistic)** است و فقط در قالب گام‌ها و ابزارهای مجاز عمل می‌کند.
+- **لایه عمودی:** ممیزی، نسخه‌داری، مصرف AI و اسرار.
+- **بیرون از هسته:**
+  - **n8n**: ترتیب مراحل فرایند، و اجرای Integrationها (پیامک انبوه، APIهای بیرونی، و در آینده RPA)
+  - ارائه‌دهندگان AI
+  - سرویس‌های بیرونی
+
+**تقسیم کار در یک جمله:**
+
+- **ERPNext** کسب‌وکار را ثبت و محاسبه می‌کند.
+- **Karyar** می‌فهمد، کنترل می‌کند، پیشنهاد می‌دهد و پس از تصمیم انسان (یا Policy مصوب) اجرا می‌کند.
+- **n8n** ترتیب گام‌ها را جلو می‌برد و Integrationها را اجرا می‌کند.
 
 # ۲. اصول بنیادین
 
 | # | اصل | پیامد فنی |
 |---|---|---|
-| P1 | ERPNext منبع حقیقت داده‌های کسب‌وکار است | Karyar فقط «وضعیت فرایند» را نگه می‌دارد، نه داده موازی |
-| P2 | هیچ ایجنتی به پایگاه داده دسترسی خام ندارد | فقط ابزارهای تایپ‌شده و از پیش ثبت‌شده. SQL آزاد وجود ندارد |
-| P3 | مجوز مستقل از مدل هوش مصنوعی اعمال می‌شود | بررسی در Tool Executor و Frappe انجام می‌شود، نه در prompt |
-| P4 | فرایندها پیکربندی‌اند، نه کد | Workflow Definition نسخه‌دار. کد مشتری‌محور فقط از راه «نقاط توسعه» |
-| P5 | ایجنت، نقش کاری، توانمندی، مجوز و گردش‌کار از هم جدا هستند | گردش‌کار به **نقش کاری** اشاره می‌کند، نه به ایجنت مشخص |
-| P6 | دخالت انسان (HITL) یک گام یا سیاست قابل‌پیکربندی است | هیچ قانون ثابتی مثل «Arman همیشه تأیید می‌خواهد» در کد نیست |
-| P7 | انتقال کار بین ایجنت‌ها فقط از راه رویداد و وضعیت | چت آزاد ایجنت با ایجنت وجود ندارد. داده ساخت‌یافته منتقل می‌شود |
-| P8 | نوشتن در ERPNext ابتدا به‌صورت پیش‌نویس است | ثبت نهایی (Submit) یک اقدام جداگانه است که سیاست‌ها کنترلش می‌کنند |
-| P9 | آنچه تأیید شده، دقیقاً همان است که اجرا می‌شود | تأیید به hash محتوا گره می‌خورد و هر تغییری تأیید را باطل می‌کند |
-| P10 | به هیچ ارائه‌دهنده هوش مصنوعی گره نخوردن | AI Gateway با نام مستعار مدل (alias) کار می‌کند |
-| P11 | هر کاری قابل ردیابی است | `correlation_id` در همه لایه‌ها و Audit Log معنایی |
-| P12 | هسته ERPNext دست‌نخورده می‌ماند | Hooks، اپ سفارشی و API. هر وصله ضروری مستند می‌شود |
-| P13 | ساده شروع کن، درست مرز بکش | یک اپ Frappe با ماژول‌های جدا. جداسازی به سرویس مستقل فقط هنگام نیاز |
+| P1 | ERPNext منبع نهایی حقیقت و موتور منطق کسب‌وکار است | محاسبه، اعتبارسنجی و ثبت با کنترلرهای ERPNext انجام می‌شود |
+| P2 | **ERPNext-first** | منطق موازی ساخته نمی‌شود. اگر ERPNext قابلیت استاندارد دارد، Karyar از همان استفاده می‌کند (بخش ۱۲.۱) |
+| P3 | Karyar ERP دوم نیست | Karyar فقط پیش‌ثبت، Context، فرایند و ممیزی نگه می‌دارد |
+| P4 | بدون دسترسی خام به پایگاه داده یا SQL دلخواه | فقط ابزارهای تایپ‌شده و ثبت‌شده، و گزارش‌های فهرست‌شده |
+| P5 | مجوز در کد اعمال می‌شود، نه در Prompt | زنجیره مجوز (بخش ۱۱). Prompt نه مجوز می‌سازد، نه تأیید |
+| P6 | مفاهیم از هم جدا هستند: ایجنت، نقش کاری (Responsibility)، توانمندی (Capability)، مجوز و گردش‌کار | گام فرایند به نقش کاری اشاره می‌کند، نه به ایجنت مشخص |
+| P7 | تصمیم شخصی ایجنت وجود ندارد | هر اقدام نهایی به یک تصمیم انسانی قابل ردیابی وصل است: تأیید لحظه‌ای یا Policy مصوب |
+| P8 | پیش‌ثبت در Karyar، ثبت نهایی در ERPNext | سند نهایی کسب‌وکار قبل از تأیید ساخته نمی‌شود. پیش‌نویس ERPNext فقط به‌صورت اختیاری و قفل‌شده |
+| P9 | آنچه تأیید شد همان است که اجرا می‌شود | تأیید به hash پیش‌ثبت و پیش‌نمایش گره می‌خورد. هر تغییر مهم، تأیید مجدد لازم دارد |
+| P10 | هر تغییر حساس، پیشنهاد تغییر با Diff است | ثبت فقط پس از تأیید صریح انسانِ احرازشده |
+| P11 | واگذاری کنترل‌شده | ایجنت فقط طبق Delegation Policy کار می‌سپارد. اختیار هرگز افزایش نمی‌یابد |
+| P12 | n8n فقط هماهنگی و اجراست | n8n مجوز، تصمیم، وضعیت پرونده و داده پیش‌ثبت ندارد |
+| P13 | مستقل از ارائه‌دهنده AI | AI Gateway با نام مستعار مدل (alias) |
+| P14 | همه‌چیز قابل ردیابی است | `correlation_id`، Audit Log معنایی، نسخه‌ها |
+| P15 | Tenant مرز جداسازی است | سایت و پایگاه داده جدا، Credential جدا، n8n و Integrationهای Tenant-aware |
+| P16 | هسته ERPNext دست‌نخورده می‌ماند | Hook، Custom Field، اپ جدا. وصله ضروری مستند می‌شود |
+| P17 | ساده شروع کن، درست مرز بکش | یک اپ Frappe با ماژول‌ها. سرویس جدا فقط هنگام نیاز |
 
 # ۳. نمودار معماری سیستم
 
 <div class="arch">
   <div class="arch-main">
     <div class="layer l-channel"><div class="lname">کانال‌ها و رابط‌ها</div>
-      <div class="boxes"><span>وب‌سایت (ویجت)</span><span>تلگرام</span><span>بله / ایتا</span><span>واتس‌اپ</span><span>اینستاگرام</span><span>صوت (آینده)</span><span class="hl">میز کار کاریار (کارکنان)</span></div></div>
+      <div class="boxes"><span>ویجت وب</span><span>بله / تلگرام</span><span>واتس‌اپ / اینستاگرام</span><span>صوت (آینده)</span><span class="hl">Karyar Workspace (کارکنان)</span></div></div>
     <div class="arrow">▼ ▲</div>
-    <div class="layer l-gw"><div class="lname">درگاه کانال — Channel Gateway</div>
-      <div class="boxes"><span>Adapterهای کانال</span><span>تشخیص هویت مخاطب</span><span>پیام استاندارد</span><span>تأیید امضای Webhook</span></div></div>
+    <div class="layer l-gw"><div class="lname">Channel Gateway (داخل Karyar) — گفت‌وگوی زنده</div>
+      <div class="boxes"><span>Adapterها</span><span>شناسایی مخاطب از Contact Channel</span><span>پیام استاندارد</span><span>تأیید امضا</span></div></div>
     <div class="arrow">▼ ▲</div>
-    <div class="layer l-brain"><div class="lname">هوشمندی و فرایند</div>
-      <div class="boxes"><span class="hl">موتور گردش‌کار<br><small>Workflow Engine</small></span><span class="hl">اجراکننده ایجنت<br><small>Agent Runtime</small></span><span>کار انسانی<br><small>Human Task</small></span><span>گفت‌وگو<br><small>Conversation</small></span></div></div>
+    <div class="layer l-brain"><div class="lname">هوشمندی و کار انسانی (Karyar)</div>
+      <div class="boxes"><span class="hl">Agent Runtime</span><span class="hl">Human Task Workspace</span><span>Change Proposal</span><span>Approval Request</span><span>Agent Task (واگذاری)</span><span>Karyar Case (پیش‌ثبت)</span></div></div>
     <div class="arrow">▼</div>
-    <div class="layer l-control"><div class="lname">کنترل — هیچ مسیری از کنار این لایه رد نمی‌شود</div>
-      <div class="boxes"><span class="hl">Policy Engine<br><small>مجوز و ریسک</small></span><span class="hl">Tool Executor</span><span>رجیستری توانمندی و ابزار</span><span>Karyar API v1</span><span>Event Bus<br><small>Outbox + RQ</small></span><span>AI Gateway</span></div></div>
+    <div class="layer l-control"><div class="lname">کنترل (Karyar) — هیچ مسیری از کنار این لایه رد نمی‌شود</div>
+      <div class="boxes"><span class="hl">Policy / Permission</span><span class="hl">Tool Executor</span><span class="hl">Promote</span><span>رجیستری ابزار</span><span>Karyar API v1</span><span>emit_event</span><span>AI Gateway</span></div></div>
     <div class="arrow">▼ ▲</div>
-    <div class="layer l-erp"><div class="lname">منبع حقیقت — Frappe Site (یک سایت برای هر Tenant)</div>
-      <div class="boxes"><span class="hl">ERPNext</span><span>HRMS</span><span>karyar_iran</span><span>Frappe: مجوز، Workflow، Version، Webhook</span></div></div>
+    <div class="layer l-erp"><div class="lname">منطق و داده کسب‌وکار — Frappe Site (یک سایت برای هر Tenant)</div>
+      <div class="boxes"><span class="hl">ERPNext (Final Truth)</span><span>HRMS</span><span>karyar_iran</span><span>Contact Channel</span><span>Frappe: مجوز، Version، Webhook، ToDo، Email، SMS</span></div></div>
     <div class="arrow">▼</div>
     <div class="layer l-infra"><div class="lname">زیرساخت</div>
-      <div class="boxes"><span>MariaDB (پایگاه داده جدا برای هر Tenant)</span><span>Redis (کش و صف)</span><span>فایل‌ها / S3</span><span>Workerها و Scheduler</span></div></div>
+      <div class="boxes"><span>MariaDB (پایگاه داده جدا برای هر Tenant)</span><span>Redis</span><span>فایل‌ها / S3</span><span>Workerها و Scheduler</span></div></div>
   </div>
   <div class="arch-side">
-    <div class="side s-audit"><div class="lname">عمودی</div><span>Audit Log</span><span>Trace / Correlation</span><span>AI Usage Record</span><span>متریک و لاگ</span><span>مدیریت اسرار</span></div>
-    <div class="side s-ext"><div class="lname">بیرون از هسته</div><span>n8n (یکپارچه‌سازی)</span><span>RPA Workers</span><span>ارائه‌دهندگان AI</span><span>APIهای بیرونی (مودیان، پیامک، بانک)</span></div>
+    <div class="side s-audit"><div class="lname">عمودی</div><span>Audit Log</span><span>نسخه‌های پیش‌ثبت</span><span>AI Usage</span><span>correlation_id</span><span>مدیریت اسرار</span></div>
+    <div class="side s-ext"><div class="lname">بیرون از هسته</div><span>n8n (برای هر Tenant): هماهنگی گام‌ها و اجرای Integration</span><span>RPA Worker (آینده، فقط بدون API)</span><span>ارائه‌دهندگان AI</span><span>APIهای بیرونی (پیامک، مودیان، بانک)</span></div>
   </div>
 </div>
 
-**جهت جریان کنترل:**
+**جهت جریان:**
 
-- **کانال ← گردش‌کار:** کانال پیام را به درگاه می‌دهد. درگاه آن را به یک Conversation وصل می‌کند و یک رویداد `channel.message.received` منتشر می‌کند. موتور گردش‌کار تصمیم می‌گیرد پیام متعلق به کدام پرونده است و کدام ایجنت باید پاسخ دهد.
-- **ایجنت ← ابزار ← ERPNext:** ایجنت فقط «ابزار» صدا می‌زند. Tool Executor سیاست‌ها را بررسی می‌کند و ابزار با هویت مجاز روی ERPNext اجرا می‌شود.
-- **ERPNext ← رویداد ← گردش‌کار:** تغییرات ERPNext رویداد تولید می‌کنند و موتور گردش‌کار گام بعدی را فعال می‌کند. این «تحویل خودکار» بین ایجنت‌هاست.
+- **مشتری ← Karyar:** مشتری با ایجنت در Karyar گفت‌وگو می‌کند. Karyar داده را به‌صورت **پیش‌ثبت** در Case نگه می‌دارد.
+- **Karyar ← n8n:** نقطه‌های عطف فرایند به‌صورت رویداد به n8n می‌رسند.
+- **n8n ← Karyar API:** ‏n8n با Karyar API ‏Human Task می‌سازد، ایجنت را فرا می‌خواند یا Promote را درخواست می‌کند.
+- **Karyar ← ERPNext:** ‏Karyar پس از بررسی مجوز و تأیید، سند را با منطق خود ERPNext ثبت می‌کند.
+- **ERPNext ← n8n:** رویدادهای ERPNext (Webhook استاندارد Frappe) دوباره به n8n می‌روند تا مرحله بعد شروع شود.
 
 # ۴. معماری اجزا
 
-برای هر جزء: چرا وجود دارد، چه مسئله‌ای حل می‌کند، کِی لازم است و چه جایگزین‌هایی بررسی شد.
-
-| جزء | مسئولیت | چرا | الان یا بعد | جایگزین‌های بررسی‌شده |
-|---|---|---|---|---|
-| **Channel Gateway** | نرمال‌سازی پیام‌ها، شناسایی مخاطب، ارسال پاسخ، تأیید امضا | جدا کردن کانال از منطق ایجنت | **الان** (۱ تا ۲ کانال) | درون Frappe یا سرویس جدا. فعلاً درون Frappe و در صورت حجم بالا جدا شود |
-| **Conversation Service** | نگهداری گفت‌وگو و پیام و اتصال آن به پرونده | حافظه کوتاه‌مدت و ردیابی | **الان** | استفاده از Communication در Frappe؛ برای چت ساخت‌یافته مناسب نیست |
-| **Agent Runtime** | اجرای یک «نوبت» ایجنت: ساخت context، فراخوانی مدل، اجرای ابزارها، اعتبارسنجی خروجی | هسته هوشمندی | **الان** (ساده) | LangGraph، CrewAI، Agents SDK. تصمیم: runtime سبک خودمان با رابط تمیز (بخش ۵) |
-| **Workflow Engine** | اجرای پایدار گراف فرایند و نگهداری وضعیت پرونده | تحویل خودکار، HITL، تایمر | **الان** (حداقلی) | Frappe Workflow، Temporal، n8n، Camunda (بخش ۷) |
-| **Human Task Service** | کار انسانی، تأیید، ویرایش گفت‌وگومحور | HITL قابل‌پیکربندی | **الان** | ToDo و Workflow Action در Frappe؛ ناکافی‌اند |
-| **Capability & Tool Registry** | تعریف ابزارهای تایپ‌شده و بسته‌بندی آن‌ها در توانمندی‌ها | جلوگیری از دسترسی خام | **الان** | MCP به‌عنوان تنها لایه؛ MCP فقط یک «نمایش» از همین رجیستری است |
-| **Policy Engine** | ترکیب سطوح مجوز و سیاست ریسک | امنیت مستقل از مدل | **الان** (پایه) | OPA یا Cedar؛ برای شروع زیادی است |
-| **Tool Executor** | تنها مسیر اجرای ابزار، همراه با ممیزی، idempotency و فیلتر خروجی | نقطه واحد کنترل | **الان** | — |
-| **Event Bus** | Outbox در پایگاه داده + dispatcher روی RQ | تحویل مطمئن رویداد | **الان** | Kafka، RabbitMQ، NATS؛ فعلاً لازم نیست |
-| **Karyar API v1** | API پایدار و نسخه‌دار برای n8n، اپ‌ها و سیستم‌های بیرونی | محافظت از مصرف‌کننده‌ها در برابر تغییرات ERPNext | **الان** (کوچک) | دسترسی مستقیم به `/api/resource`؛ شکننده است |
-| **AI Gateway** | انتزاع ارائه‌دهنده، نام مستعار مدل، fallback، ثبت مصرف | مستقل از ارائه‌دهنده و آماده ثبت هزینه | **الان** (کتابخانه) | LiteLLM Proxy (گزینه بعدی) |
-| **Audit & Telemetry** | Audit Log معنایی، Trace، متریک | ممیزی و عیب‌یابی | **الان** (پایه) | OpenTelemetry کامل (بعد) |
-| **Karyar Workspace** | رابط کارکنان: صندوق کار، گفت‌وگو، پرونده‌ها | کاربر نباید مجبور به کار با ERPNext Desk باشد | **الان** (حداقلی) | فقط تلگرام یا بله برای کارکنان؛ برای کار جدی کافی نیست |
-| **n8n** | یکپارچه‌سازی و اعلان | اتصال سریع به سرویس‌های بیرونی | **فاز ۲** | کدنویسی مستقیم هر اتصال |
-| **RPA Service** | تعامل با سیستم‌های بدون API | پورتال‌ها | **فاز ۳ به بعد** | — |
-| **Control Plane** | ثبت Tenant، راه‌اندازی، بسته‌ها، اندازه‌گیری مصرف مرکزی | چندمستأجری در مقیاس | **بعد** (اول با اسکریپت) | Frappe Press (AGPL) |
+| جزء | مسئولیت | چرا در Karyar است (و نه ERPNext) | فاز |
+|---|---|---|---|
+| **Channel Gateway** | گفت‌وگوی زنده، Adapter کانال‌ها، شناسایی مخاطب از `Contact Channel` | ERPNext چت زنده و ایجنت ندارد | ۱ |
+| **Conversation** | پیام‌ها و خلاصه تعامل. خلاصه پس از اتصال به مخاطب در Timeline خود ERPNext ثبت می‌شود | Context ایجنت. تاریخچه رسمی در ERPNext (`Communication`) | ۱ |
+| **Agent Runtime** | اجرای یک نوبت ایجنت: Context، مدل، ابزارها، اعتبارسنجی خروجی | مخصوص AI | ۱ |
+| **Karyar Case** | پرونده: مرحله، پیش‌ثبت (Draft) و نسخه‌های آن، ارجاع به اسناد ERPNext | پیش‌ثبتِ قبل از وجود سند ERPNext | ۱ |
+| **Human Task Workspace** | فضای مشترک انسان و ایجنت: گفت‌وگو، پنل، اقدام‌ها | Frappe Workflow پیش از وجود سند و به‌صورت گفت‌وگویی کار نمی‌کند. **تخصیص و اعلان از `ToDo` و Notification استاندارد Frappe** | ۱ |
+| **Change Proposal** | پیشنهاد تغییر با Diff و تأیید صریح | کنترل AI | ۱ |
+| **Approval Request** | تأیید تک‌نفره، چندنفره، M از N، ترتیبی، موازی، و گره خوردن به hash | Frappe Workflow ‏M از N و hash ندارد و پیش از سند کار نمی‌کند | ۱ |
+| **Agent Task** | واگذاری بین ایجنت‌ها و به Integrationها، و پیگیری آن | کنترل AI | ۱ |
+| **Policy / Permission Engine** | زنجیره مجوز، Approval Policy، Auto-Execution Policy، Delegation Policy | کنترل AI. **در انتها به مجوز Frappe ختم می‌شود** | ۱ |
+| **Tool Executor + Registry** | تنها مسیر اجرای ابزار: بررسی مجوز، idempotency، فیلتر خروجی، ممیزی | کنترل AI | ۱ |
+| **Promote** | تنها مسیر ثبت نهایی در ERPNext با کنترلرهای ERPNext | دروازه کنترل | ۱ |
+| **Karyar API v1** | API پایدار برای n8n، Workspace و اپ‌ها | جدا کردن مصرف‌کننده‌ها از جزئیات ERPNext | ۱ |
+| **emit_event** | انتشار رویدادهای Karyar به n8n پس از commit. رویدادهای ERPNext با Webhook استاندارد Frappe | سبک؛ Outbox اختصاصی موکول به آینده | ۱ |
+| **AI Gateway** | انتزاع ارائه‌دهنده و ثبت مصرف و هزینه | مخصوص AI | ۱ (به‌صورت کتابخانه) |
+| **Audit** | ممیزی معنایی (چه کسی، از طرف چه کسی، چه پیشنهادی، چه تأییدی). تغییرات میدانی اسناد ERPNext با `Version` استاندارد | مکمل `Version`، نه تکرار آن | ۱ |
+| **n8n** | ترتیب مراحل فرایند و اجرای Integration | — | ۱ |
+| **RPA Worker** | سیستم‌های بدون API | — | آینده |
+| **Control Plane** | ثبت Tenant، راه‌اندازی، تجمیع مصرف | — | آینده (ابتدا با اسکریپت) |
 
 # ۵. معماری ایجنت
 
 ## ۵.۱ مفاهیم جداشده
 
-یکی از مهم‌ترین تصمیم‌های این سند، **جدا کردن پنج مفهوم** از هم است:
-
 | مفهوم | تعریف | مثال |
 |---|---|---|
-| **Capability (توانمندی)** | یک توانایی اتمی که به یک یا چند ابزار نگاشت می‌شود و سطح ریسک دارد | `crm.lead.draft`، `report.sales_summary.read`، `accounts.journal.draft` |
-| **Responsibility (نقش کاری)** | بسته‌ای از توانمندی‌ها به‌علاوه دستورالعمل حرفه‌ای | «فروش»، «CRM»، «حسابداری»، «پذیرش مشتری» |
-| **Agent (ایجنت)** | یک شخصیت اجرایی شامل نام، لحن، کانال‌ها، مدل و یک یا چند نقش کاری | Ava، Hanna، Arman، «سارا» (چند نقش در یک ایجنت) |
-| **Role Assignment (انتساب نقش)** | تعیین اینکه در هر Tenant، هر نقش کاری را کدام ایجنت(ها) یا کاربر(ها) انجام می‌دهند | شرکت C: فروش + CRM + حسابداری ← «سارا» |
-| **Frappe Role / Permission** | مجوز واقعی سیستم روی DocTypeها و رکوردها | Sales User، Accounts Manager |
+| **Capability (توانمندی)** | یک توانایی اتمی که به یک یا چند ابزار نگاشت می‌شود و سطح ریسک دارد | `crm.lead.draft`، `report.sales_summary.read` |
+| **Responsibility (نقش کاری)** | بسته‌ای از توانمندی‌ها و دستورالعمل حرفه‌ای. **هم به ایجنت و هم به انسان** قابل انتساب است | «پذیرش مشتری»، «فروش»، «حسابداری»، «تأییدکننده مالی» |
+| **Agent (ایجنت)** | یک شخصیت اجرایی با یک یا چند Responsibility، کانال‌ها و مدل | Ava، Hanna، Arman، «سارا» (چند نقش) |
+| **Role Assignment** | تعیین اینکه در هر Tenant، هر Responsibility با کدام ایجنت(ها) و کدام انسان(ها) است | شرکت C: فروش، CRM و حسابداری با «سارا»؛ تأیید مالی با «خانم احمدی» |
+| **Frappe Role / Permission** | مجوز واقعی روی داده (DocType، رکورد، فیلد) | Sales User، Accounts Manager |
 
-**قاعده کلیدی:** گام‌های گردش‌کار به **نقش کاری** اشاره می‌کنند، نه به ایجنت. یعنی گام می‌گوید «انجام توسط: نقش حسابداری» و جدول انتساب در هر Tenant مشخص می‌کند این نقش با کیست.
+- **نام‌گذاری:** در کد `Responsibility` و در رابط کاربری «نقش کاری». این انتخاب برای جلوگیری از اشتباه با Role در Frappe است.
+- **گام‌های فرایند** به Responsibility اشاره می‌کنند، نه به ایجنت. پس ترکیب یا تفکیک نقش‌ها هیچ تعریف فرایندی را تغییر نمی‌دهد.
 
-نتیجه: اگر یک ایجنت چند نقش داشته باشد یا یک نقش بین چند ایجنت یا انسان تقسیم شود، **هیچ تعریف گردش‌کاری عوض نمی‌شود**.
+## ۵.۲ تعریف ایجنت (`Karyar Agent`)
 
-> **نکته نام‌گذاری (نیاز به تأیید):** کلمه Role در Frappe معنای «نقش دسترسی» دارد. برای جلوگیری از اشتباه، در کد از `Responsibility` استفاده می‌کنیم و در رابط کاربری فارسی از «نقش کاری».
+- **شخصیت و زبان**
+- **Responsibilityها:** توانمندی‌ها اجتماع (union) آن‌هاست و قابل محدودسازی است.
+- **کانال‌های مجاز و نوع مخاطب**
+- **پروفایل مدل:** یک نام مستعار مثل `fast` یا `smart`.
+- **دستورالعمل نسخه‌دار:** از چند لایه ترکیب می‌شود: پایه سکو، نقش کاری، Tenant و گام فرایند.
+- **هویت اجرایی:** یک کاربر سرویس Frappe بدون امکان ورود.
+- **محدودیت‌ها:** حداکثر گام در هر نوبت، حداکثر token و سقف هزینه.
+- **حافظه:**
+  - خلاصه گفت‌وگوی جاری
+  - خلاصه چند گفت‌وگوی آخر **همان مخاطب**
+  - **واقعیت‌های کسب‌وکاری همیشه از ERPNext خوانده می‌شوند** (بخش ۲۲)
 
-## ۵.۲ تعریف ایجنت (DocType: `Karyar Agent`)
+## ۵.۳ حالت‌های اجرا
 
-- **شناسه:** نام، شخصیت و لحن، زبان، آواتار
-- **نقش‌های کاری:** یک یا چند Responsibility. توانمندی‌ها از اجتماع (union) آن‌ها به دست می‌آیند و قابل محدودسازی‌اند
-- **کانال‌های مجاز** و **مخاطب مجاز:** مشتری بیرونی، کارمند یا هر دو
-- **پروفایل مدل:** یک نام مستعار مثل `smart` یا `fast` که در AI Gateway به مدل واقعی نگاشت می‌شود
-- **قالب دستورالعمل:** نسخه‌دار. دستورالعمل از چند لایه ترکیب می‌شود: پایه سکو، نقش کاری، تنظیمات Tenant، و گام گردش‌کار
-- **هویت اجرایی:** یک کاربر Frappe از نوع سرویس (بدون امکان ورود) برای کارهای خودکار
-- **سیاست حافظه:** فعلاً فقط گفت‌وگو و context پرونده. حافظه بلندمدت در فاز بعد
-- **محدودیت‌ها:** حداکثر تعداد فراخوانی ابزار در هر نوبت، حداکثر token، و سقف هزینه (جای خالی برای فاز بعد)
-
-## ۵.۳ حالت‌های اجرای ایجنت
-
-1. **نوبت گفت‌وگو:** پیامی از کاربر یا مشتری می‌رسد و ایجنت پاسخ می‌دهد. ممکن است ابزار بخواند یا پیشنهاد اقدام بدهد.
-2. **گام گردش‌کار:** موتور گردش‌کار به ایجنت یک «دستور کار» ساخت‌یافته می‌دهد (هدف، داده پرونده، توانمندی‌های مجاز در همین گام، و Schema خروجی). ایجنت باید خروجی معتبر طبق Schema تحویل دهد.
-3. **دستیار بازبینی:** در گام انسانی، ایجنت به کارمند کمک می‌کند داده را بررسی و اصلاح کند (بخش ۸).
-4. **(آینده)** کارهای زمان‌بندی‌شده و تحلیلی، مثل «هر صبح پیگیری‌های عقب‌افتاده را بررسی کن». حتی این‌ها هم یک گردش‌کار تعریف‌شده‌اند، نه ابتکار ایجنت.
+1. **گفت‌وگوی زنده با مشتری:** درون Karyar. نتیجه به Case و رویداد تبدیل می‌شود.
+2. **کار فرایندی:** n8n با `agents.run_task` آن را آغاز می‌کند، به‌صورت ناهمگام. پایان کار با رویداد `agent.task.completed` اعلام می‌شود.
+3. **دستیار Workspace:** در Human Task، از طرف کاربر مسئول عمل می‌کند (بخش ۸).
+4. **کار واگذارشده:** یک `Agent Task` که ایجنت یا انسان دیگری طبق Policy ساخته است (بخش ۱۰).
 
 ## ۵.۴ چرخه یک نوبت ایجنت
 
 <pre class="ltr">
-1. Load: Agent config + Responsibilities → effective Capabilities (∩ step scope)
-2. Build context: conversation window + run context (structured) + task brief
-3. AI Gateway.complete(alias, messages, tools=allowed_tool_schemas, response_schema?)
-4. For each tool call → Tool Executor:
-      policy.check(principal, capability, scope, risk) → execute → filter output → audit
-5. Loop (bounded: max_steps, max_tokens, timeout)
-6. Validate final output against schema (retry once on failure → else escalate to human)
-7. Persist: messages, step output, usage record, audit; emit events
+1. Load agent config → effective capabilities = Responsibilities ∩ step/task scope ∩ principal permissions
+2. Build context: conversation window + contact summaries + case refs (business facts via ERPNext tools)
+3. AI Gateway.complete(alias, messages, allowed tool schemas, response schema?)  → UsageRecord
+4. Each tool call → Tool Executor: policy check → execute (as principal) → filter output → audit
+5. Bounded loop (max steps / tokens / time)
+6. Validate output schema (one retry, else escalate to a Human Task)
+7. Persist messages / proposals / audit; emit events
 </pre>
 
-- **محل اجرا:** Workerهای RQ با صف اختصاصی `karyar_agent`، نه پروسه وب.
-- **پخش پاسخ:** با `publish_realtime` در Socket.io انجام می‌شود.
-- **چرا runtime سبک خودمان، نه چارچوب آماده؟** ما به سه چیز احتیاج داریم:
-  - یکپارچگی عمیق با هویت و مجوز Frappe و تراکنش‌های آن
-  - چندمستأجری در سطح Site
-  - کنترل کامل روی ممیزی
+- **محل اجرا:** Workerهای RQ با صف `karyar_agent`.
+- **پخش زنده پاسخ:** با `publish_realtime`.
+- **چرا runtime سبک خودمان:** یکپارچگی عمیق با هویت، مجوز و چندمستأجری Frappe، و کنترل کامل روی ممیزی.
 
-  حلقه tool-calling هم پیچیده نیست. چارچوب‌هایی مثل LangGraph می‌توانند **داخل** یک گام برای استدلال‌های پیچیده به کار بروند، ولی **مالک وضعیت فرایند نیستند**.
+## ۵.۵ ایجنت پیشنهاد می‌دهد؛ تصمیم متعلق به انسان است
 
-## ۵.۵ پیشنهاد اقدام (Action Proposal)
-
-ایجنت مستقیماً «کار حساس» انجام نمی‌دهد. وقتی ابزاری از نوع `commit-write` یا `external` باشد و سیاست بگوید «نیاز به تأیید دارد»، روند این است:
-
-1. Tool Executor به‌جای اجرا، یک **Action Proposal** می‌سازد که شامل ابزار، ورودی، خلاصه انسانی و hash است.
-2. این پیشنهاد به گام انسانی می‌رود.
-3. بعد از تأیید، **همان ورودی دقیق** اجرا می‌شود.
-
-به این ترتیب HITL دو منبع دارد:
-
-- **صریح:** یک گام انسانی که در گراف گردش‌کار تعریف شده
-- **ضمنی:** سیاست ریسک Tenant، مثلاً «هر ثبت نهایی سند حسابداری بالای ۵۰ میلیون ریال تأیید مدیر مالی می‌خواهد»
-
-هر دو قابل‌پیکربندی‌اند.
-
-# ۶. معماری سازنده ایجنت (Agent Builder)
-
-**فاز ۱: بدون رابط گرافیکی.** پیکربندی با DocTypeهای Frappe انجام می‌شود (فرم‌های Desk برای تیم Karyar) و به‌صورت **بسته (Pack)** نسخه‌دار ذخیره می‌شود.
-
-**ساختار بسته:**
-
-<pre class="ltr">
-Karyar Pack (versioned, e.g. "clinic-basic@1.2.0")
-├── responsibilities/*.json   (capabilities + instructions)
-├── agents/*.json             (persona, channels, model alias, responsibilities)
-├── workflows/*.json          (versioned graph definitions)
-├── role_assignments.json     (tenant-overridable defaults)
-├── policies.json             (risk thresholds, HITL defaults)
-├── reports.json              (report catalog entries)
-└── erp_customizations/       (custom fields, property setters — Frappe fixtures)
-</pre>
-
-- **اعمال روی Tenant:** دستور `bench --site X karyar apply-pack clinic-basic@1.2.0` اجرا می‌شود و تفاوت‌ها با تنظیمات خود Tenant ادغام می‌شوند.
-- **چرا Pack:** این همان سازوکار ۸۰/۲۰ است. ۸۰٪ مشترک در Pack قرار می‌گیرد و ۲۰٪ اختصاصی هر مشتری به‌صورت override در سایت خودش. هیچ clone کردن کدی لازم نیست.
-- **فاز بعد:** رابط گرافیکی سازنده ایجنت (فرم ساده) و پیش‌نمایش رفتار ایجنت با «سناریوی تست».
-- **چیزی که هرگز قابل پیکربندی نیست:** ساخت ابزار جدید از طریق رابط کاربری یا توسط هوش مصنوعی. ابزار جدید **کد** است، بازبینی می‌شود و از راه `hooks` ثبت می‌شود.
-
-**نقاط توسعه برای اپ‌های دیگر** (مثل Packها، `karyar_iran` یا اپ اختصاصی یک مشتری):
-
-<pre class="ltr">
-# hooks.py of any app
-karyar_tools            = ["karyar_iran.tools.validators", "karyar_iran.tools.moadian"]
-karyar_step_types       = ["my_app.steps.custom_step"]
-karyar_channel_adapters = ["karyar_iran.channels.bale"]
-karyar_ai_providers     = ["my_app.ai.local_vllm"]
-karyar_report_providers = ["my_app.reports"]
-</pre>
-
-# ۷. معماری موتور گردش‌کار
-
-## ۷.۱ چرا موتور جداگانه؟ (مقایسه گزینه‌ها)
-
-| گزینه | مزیت | عیب | نتیجه |
-|---|---|---|---|
-| **Frappe Workflow** | آماده، ادغام کامل با سند و Role | فقط یک DocType. بدون گام ایجنت، تایمر، موازی یا زیرفرایند | فقط برای «وضعیت سند» در Desk، و اختیاری |
-| **n8n** | سریع و بصری | منطق تراکنشی و وضعیت، خارج از ERP و پراکنده؛ مجوز ضعیف | ❌ برای هسته؛ ✅ برای یکپارچه‌سازی |
-| **Temporal** | اجرای پایدار حرفه‌ای، تایمر و retry | زیرساخت سنگین (سرور، پایگاه داده جدا)؛ تیم باید یاد بگیرد؛ چندمستأجری دردسر دارد | گزینه **بعدی** اگر بار و پیچیدگی رشد کرد |
-| **Camunda / BPMN** | استاندارد | سنگین، Java، برای فرایندهای گفت‌وگومحور زیادی رسمی | ❌ |
-| **موتور سبک در Frappe** ✅ | هم‌تراکنش با ERPNext، همان مجوز و چندمستأجری، بدون زیرساخت جدید | باید خودمان بسازیم و با دقت محدودش کنیم | **پیشنهاد فاز ۱** |
-
-**تصمیم پیشنهادی:** یک **ماشین حالت پایدار** داخل اپ `karyar` ساخته شود. «تعریف» از «اجراکننده» جدا باشد تا در آینده اگر لازم شد، اجراکننده با Temporal عوض شود و تعریف‌ها دست نخورند.
-
-## ۷.۲ مدل داده
-
-| DocType | توضیح |
+| ایجنت **می‌تواند** | ایجنت **نمی‌تواند** |
 |---|---|
-| `Karyar Workflow Definition` | نام، نسخه، وضعیت (draft/active/retired)، trigger و `graph` به‌صورت JSON اعتبارسنجی‌شده |
-| `Karyar Workflow Run` (پرونده) | تعریف و نسخه آن (هر پرونده به نسخه‌ای که با آن شروع شده **سنجاق** است)، وضعیت، `context` ساخت‌یافته، اسناد ERPNext مرتبط، `correlation_id` |
-| `Karyar Step Run` | هر اجرای یک گام: نوع، ورودی و خروجی، مجری، تلاش‌ها، خطا، زمان‌ها |
-| `Karyar Human Task` | کار انسانی (بخش ۸) |
-| `Karyar Timer` | زمان‌های سررسید برای timeout و escalation. یک job در scheduler هر دقیقه آن‌ها را بررسی می‌کند |
+| فهمیدن درخواست، خواندن داده مجاز، پیشنهاد تغییر (Change Proposal)، پیشنهاد تصمیم، آماده کردن پیش‌ثبت، اجرای تغییرِ **تأییدشده**، هماهنگی، و واگذاری طبق Policy | تأیید تغییر، تأیید مجوز (Approval)، رد، لغو، Pause، تغییر مسیر، Promote بدون تأیید یا Policy، و ساختن مجوز یا اختیار جدید |
 
-## ۷.۳ انواع گام (قابل گسترش با `karyar_step_types`)
+**اجرای خودکار** (بدون انسان در لحظه) فقط وقتی مجاز است که یک **Auto-Execution Policy** مصوب آن را مجاز کرده باشد. ممیزی هر اجرای خودکار شامل نسخه Policy و کاربری است که آن را تعریف یا فعال کرده است.
 
-| نوع گام | کاربرد | فاز |
+# ۶. معماری Agent Builder و بسته‌ها (Pack)
+
+**فاز ۱:** پیکربندی با فرم‌های Frappe انجام می‌شود (توسط تیم Karyar) و در قالب **Pack**های نسخه‌دار ذخیره می‌شود.
+
+<pre class="ltr">
+Karyar Pack (versioned, e.g. "clinic-basic@1.0.0")
+├── responsibilities/*.json      capabilities + instructions
+├── agents/*.json                persona, channels, model alias, responsibilities
+├── role_assignments.json        tenant-overridable defaults (agents + humans)
+├── policies/                    approval, auto-execution, delegation, retention
+├── human_task_templates/*.json
+├── reports.json                 report catalog entries
+├── integration_targets.json     names + schemas (credentials NOT included)
+├── n8n/                         workflow JSON + README per workflow
+└── erp_customizations/          custom fields, property setters, print formats (fixtures)
+</pre>
+
+- **اعمال روی Tenant:** با `bench --site X karyar apply-pack <pack@version>`. تنظیمات اختصاصی هر Tenant به‌صورت override ادغام می‌شود. این همان سازوکار ۸۰/۲۰ است.
+- **نقاط توسعه** برای اپ‌های دیگر: `karyar_tools`، `karyar_channel_adapters`، `karyar_ai_providers`، `karyar_report_providers`.
+- **ساخت ابزار جدید همیشه کد است.** بازبینی می‌شود و نه از رابط کاربری ساخته می‌شود، نه توسط AI.
+
+# ۷. Workflow و Orchestration (فاز ۱: n8n)
+
+## ۷.۱ تصمیم
+
+در فاز ۱، **Workflow Engine اختصاصی ساخته نمی‌شود.** ترتیب و مسیر مراحل فرایند در **n8n خودمیزبان** ساخته و اجرا می‌شود.
+
+**اصل:** «n8n ترتیب کارها را تعیین می‌کند. Karyar تصمیم می‌گیرد، کنترل می‌کند و اجرا می‌کند. ERPNext ثبت می‌کند.»
+
+## ۷.۲ مرز مسئولیت
+
+| n8n | Karyar | ERPNext |
 |---|---|---|
-| `trigger` | شروع با رویداد، پیام، زمان‌بندی یا دستی | ۱ |
-| `agent_task` | گام ایجنت با هدف، نقش کاری، توانمندی‌های مجاز و Schema خروجی | ۱ |
-| `human_task` | تعامل یا تأیید انسانی (بخش ۸) | ۱ |
-| `condition` | شاخه شرطی با عبارت امن روی `context`، **نه** کد آزاد | ۱ |
-| `erp_action` | اقدام از پیش تعریف‌شده روی ERPNext از طریق ابزار، مثل «ثبت نهایی Sales Order» | ۱ |
-| `wait_event` | انتظار برای رویداد مشخص، مثل تأیید پرداخت | ۱ |
-| `validate` / `transform` | اعتبارسنجی Schema و قواعد، و نگاشت داده | ۱ |
-| `notify` | اعلان به انسان یا مشتری | ۱ |
-| `end` | پایان (موفق، ردشده یا لغوشده) | ۱ |
-| `timer` / `escalate` | مهلت و ارجاع به سطح بالاتر | ۲ |
-| `integration_call` | فراخوانی n8n یا سرویس بیرونی با callback | ۲ |
-| `parallel` / `join` | شاخه‌های موازی (مثلاً تأیید ۲ از ۳) | ۲ تا ۳ |
-| `sub_workflow` | فراخوانی گردش‌کار دیگر | ۳ |
-| `rpa_job` | کار RPA | ۳ به بعد |
+| Trigger (رویداد Webhook، Cron) | گفت‌وگوی زنده و اجرای ایجنت | منطق، محاسبه و اعتبارسنجی کسب‌وکار |
+| ترتیب، انشعاب و مسیر بین مراحل | Human Task، Change Proposal، Approval | ثبت نهایی و وضعیت سند |
+| فراخوانی Karyar API | مجوز، Policy، Promote | گزارش‌های استاندارد |
+| اجرای Integration (پیامک انبوه، APIهای بیرونی، RPA در آینده) | وضعیت پرونده (`Karyar Case`) و پیش‌ثبت | `Version`، `Communication`، `ToDo` |
+| retry فراخوانی بیرونی و Error Workflow | ممیزی و مصرف AI | — |
 
-## ۷.۴ معناشناسی اجرا
+## ۷.۳ قواعد سخت n8n
 
-- **پیشروی رویدادمحور:** هر رویداد یا تکمیل گام، یک job به نام «پیشروی پرونده» (`advance_run`) را با **قفل پرونده** اجرا می‌کند. قفل با `SELECT … FOR UPDATE` روی ردیف پرونده یا قفل Redis گرفته می‌شود تا دو worker همزمان یک پرونده را جلو نبرند.
-- **Idempotency:** هر گام یک `idempotency_key` دارد. اقدام‌های ERPNext با کلید یکتا ثبت می‌شوند تا تکرار رویداد به ایجاد سند تکراری منجر نشود.
-- **Retry:** هر نوع گام سیاست retry خودش را دارد. ایجنت و API بیرونی retry می‌شوند، ولی `erp_action` فقط اگر idempotent باشد. بعد از اتمام تلاش‌ها، پرونده به حالت `needs_attention` می‌رود و یک Human Task «رفع خطا» ساخته می‌شود.
-- **نسخه‌داری:** پرونده‌های در جریان با همان نسخه تعریفی که شروع شده‌اند ادامه می‌دهند. فعال کردن نسخه جدید فقط روی پرونده‌های جدید اثر دارد.
-- **عبارت‌های شرط:** با یک زبان عبارت امن و محدود نوشته می‌شوند، مثلاً `safe_eval` در Frappe یا JSONLogic. **هرگز** کد Python آزاد در تعریف گردش‌کار نوشته نمی‌شود.
+1. n8n **فقط** با Karyar API v1 کار می‌کند. دسترسی مستقیم به ERPNext (نود ERPNext یا `/api/resource`) و پایگاه داده **ممنوع** است.
+2. **منطق کسب‌وکار در Code Node ممنوع است.** Code Node فقط برای نگاشت و قالب‌بندی است.
+3. n8n روی **پرچم‌هایی که Karyar برمی‌گرداند** شرط می‌گذارد، مثل `requires_approval` یا `decision`. خودش محاسبه کسب‌وکاری نمی‌کند.
+4. **نودهای AI Agent در n8n ممنوع‌اند.** همه ایجنت‌ها در Karyar هستند.
+5. **Workflowها کوتاه و زنجیره‌ای‌اند.** Wait چندروزه ممنوع است. وضعیت پرونده در `Karyar Case` است.
+6. n8n **پیش‌ثبت، مجوز و داده کسب‌وکاری نگه نمی‌دارد.** فقط `case_id` و حداقل فیلدها را منتقل می‌کند. ذخیره داده اجرای جریان‌های حساس خاموش است و داده‌های اجرا به‌صورت خودکار حذف می‌شوند (pruning).
+7. **`case_id` و `correlation_id` در همه فراخوانی‌ها منتقل می‌شوند.** شناسه execution در n8n روی Case ثبت می‌شود.
+8. **Karyar API برای پرونده‌های `paused` و `cancelled` هر اقدام و Promote را رد می‌کند.** پس ادامه اشتباهی یک Workflow اثری در ERPNext ندارد.
 
-# ۸. معماری دخالت انسان (Human-in-the-Loop)
+## ۷.۴ نگهداری و انتقال‌پذیری
 
-## ۸.۱ HITL یک گام است، نه یک قانون
+- **export:** هر Workflow به JSON در `karyar-deploy/n8n/workflows/` منتقل می‌شود، همراه با یک `README` (Trigger، گام‌ها و endpointها). اعتبارنامه‌ها در git نیستند.
+- **محیط‌ها:** n8n جدا برای test و production. نام‌گذاری: `KY | <process> | <segment>`.
+- **انتقال‌پذیری:** چون منطق، وضعیت و مجوز در Karyar است، انتقال در آینده به موتور داخلی یعنی بازنویسی **ترتیب** از روی READMEها، نه بازسازی Karyar.
 
-هیچ ایجنتی ذاتاً «نیازمند تأیید» نیست. HITL از دو جا وارد پرونده می‌شود:
+## ۷.۵ Frappe Workflow
 
-1. **گام `human_task` در گراف گردش‌کار:** صریح و طراحی‌شده.
-2. **سیاست ریسک (Policy Gate):** وقتی ایجنت اقدامی پیشنهاد می‌کند که سیاست Tenant برایش تأیید لازم می‌داند.
+- برای اسنادی که از مسیر Karyar ثبت می‌شوند، **Frappe Workflow فعال نمی‌شود.** تأیید پیش از وجود سند در Karyar انجام شده است و دو ماشین حالت روی یک سند تعارض ایجاد می‌کنند.
+- Frappe Workflow برای اسنادی که کارکنان **مستقیم در Desk** می‌سازند، همچنان قابل استفاده است (ERPNext-first).
 
-## ۸.۲ پیکربندی یک گام انسانی
+# ۸. Human-in-the-Loop: Workspace مشترک انسان و ایجنت
 
-| تنظیم | گزینه‌ها |
+## ۸.۱ تعریف
+
+Human Task یک **Workspace مشترک** است، نه یک دکمه تأیید یا رد:
+
+- **تعامل اصلی گفت‌وگوست.** انسان با ایجنت صحبت می‌کند، وضعیت می‌پرسد، دستور می‌دهد، پیشنهاد تغییر می‌گیرد و تأیید می‌کند، کار را به ایجنت دیگر می‌سپارد، و پرونده را در محدوده اختیار خودش هدایت می‌کند.
+- **پنل کاری** در کنار گفت‌وگو شامل این‌هاست:
+  - داده ساخت‌یافته و Diff نسخه‌ها
+  - پیش‌نمایش ERPNext
+  - کارت‌های Change Proposal
+  - وضعیت Approval
+  - خط زمانی
+  - کارهای واگذارشده
+
+**دکمه‌ها فقط میانبرهای اختیاری‌اند.** محل ساخت Task را Workflow در n8n تعیین می‌کند، با `human_tasks.create(template, case_id)`. محتوا و قواعد Task در Karyar است.
+
+## ۸.۲ اختیار انسان
+
+**اختیار مؤثر = Identity ∩ Frappe Roles/Permissions ∩ Responsibility ∩ Human Task Template ∩ Approval Policy**
+
+| لایه | تعیین می‌کند |
 |---|---|
-| مسئول انجام (Assignee) | کاربر مشخص، Frappe Role، نقش کاری (Responsibility)، عبارت پویا مثل «مدیر شعبه همین مشتری»، یا Assignment Rule در Frappe |
-| تعداد و الگوی تأیید | ۱ نفر، N نفر، «M از N»، ترتیبی یا موازی |
-| داده قابل نمایش | فهرست فیلدها، همراه با پوشاندن فیلدهای حساس برای این گام |
-| داده قابل ویرایش | فهرست فیلدهای قابل اصلاح توسط انسان. بقیه فقط‌خواندنی‌اند |
-| پیش‌شرط تکمیل | فیلدهای اجباری یا قواعد اعتبارسنجی قبل از امکان تأیید |
-| اقدام‌های مجاز | تأیید، رد، بازگشت برای اصلاح، درخواست اطلاعات از مشتری، توقف، ارجاع |
-| پس از ویرایش | ادامه، یا بازبینی مجدد توسط همان نفر یا نفر دیگر |
-| پس از رد | شاخه رد: پایان، بازگشت به گام قبل یا مسیر جایگزین |
-| سطح تأیید صریح | `none` (پیام عادی کافی است)، `confirm` (نمایش خلاصه نهایی و تأیید صریح)، `strong` (تأیید صریح به‌علاوه OTP یا رمز برای عملیات مالی) |
-| مهلت | timeout، یادآوری، ارجاع (فاز ۲) |
-| کانال | Karyar Workspace، تلگرام/بله کارمند، یا ایمیل (لینک) |
+| Identity | چه کسی است. Session احرازشده و 2FA برای سطح `strong` |
+| Frappe Roles و User Permission | به **چه داده‌ای** دسترسی دارد. محدوده‌هایی مثل شعبه هم همین‌جا تعیین می‌شود |
+| Responsibility (انسانی) | چه **نقش کاری** در فرایند دارد. Role Assignment در هر Tenant |
+| Human Task Template | در **این مرحله** چه اقدام‌ها و فیلدهایی مجاز است |
+| Approval Policy | آیا واجد شرایط تأیید این عملیات است |
 
-## ۸.۳ تعامل گفت‌وگومحور، با تصمیم‌های ساخت‌یافته
+**درخواست خارج از اختیار:** ایجنت صریح می‌گوید خارج از حوزه اختیار کاربر است، افراد صاحب صلاحیت را معرفی می‌کند (از Role Assignment)، و در صورت مجاز بودن واگذاری را پیشنهاد می‌دهد. رویداد `security.out_of_scope_request` ثبت می‌شود.
 
-**مشکل:** تعامل آزاد («سن را ۳۸ کن»، «بفرست مرحله بعد») با ممیزی و امنیت در تعارض است. اگر مدل «باشه» را اشتباهاً «تأیید» تفسیر کند چه می‌شود؟
+## ۸.۳ اقدام‌ها
 
-**راه‌حل:** گفت‌وگو **رابط** است، اما وضعیت و تصمیم **ساخت‌یافته** است:
+| اقدام | قاعده |
+|---|---|
+| مشاهده | فقط فیلدهای مجاز. بقیه پوشانده می‌شوند |
+| پرسش وضعیت، تاریخچه، آخرین گفت‌وگو، آخرین تغییر و «چه کسی چه کرد» | ابزارهای فقط‌خواندنی `case.status`، `case.timeline`، `task.history`، `draft.diff` و `conversation.last_summary`، فیلترشده با مجوز همان کاربر |
+| افزودن، ویرایش یا حذف (پیش‌ثبت یا اطلاعات مشتری) | **Change Proposal با Diff، سپس تأیید صریح، سپس ثبت** (۸.۴) |
+| درخواست اطلاعات جدید از مشتری | واگذاری به ایجنت مسئول ارتباط با مشتری (مثلاً Ava) با `Agent Task`. پاسخ مشتری یک نسخه جدید پیش‌ثبت با منبع «مشتری» می‌سازد |
+| کمک گرفتن از ایجنت دیگر | `Agent Task` طبق Delegation Policy (بخش ۱۰) |
+| واگذاری به فرد دیگر (Assign) | فقط به فردی که Responsibility واجد شرایط دارد. از `assign_to` و `ToDo` استاندارد Frappe استفاده می‌شود |
+| جلو بردن (`approved`/`forwarded`) | فقط اگر پیش‌شرط‌ها و Approval کامل باشد |
+| برگرداندن به مرحله قبل (`returned`) | دلیل الزامی است |
+| تغییر مسیر | فقط بین `allowed_routes` تعریف‌شده در Template |
+| Pause و Resume | `Karyar Case.status`. اقدام‌ها و Promote در وضعیت Pause مسدودند |
+| لغو (Cancel) | پایانی است، با سطح تأیید `confirm`. **اسناد قبلاً ثبت‌شده در ERPNext خودکار لغو نمی‌شوند.** لغو یا اصلاح آن‌ها اقدامی جدا و تحت Approval Policy است |
 
-- Human Task یک **payload ساخت‌یافته** با Schema دارد که شامل داده، فیلدهای الزامی و فیلدهای قابل ویرایش است.
-- ایجنت در حالت «دستیار بازبینی» فقط این ابزارها را دارد:
-  - `task.show`: نمایش داده
-  - `task.patch(field, value)`: اصلاح یک فیلد، با اعتبارسنجی Schema و قواعد. هر اصلاح یک «نسخه» ثبت می‌کند که در آن مشخص است *انسان دستور داد و ایجنت اجرا کرد*.
-  - `task.ask_customer(question)`: درخواست اطلاعات از مشتری. این یک زیرگام می‌سازد که به گفت‌وگوی مشتری با Ava وصل است.
-  - ابزارهای **خواندنی** در محدوده مجوز همین کارمند.
-  - `task.propose_decision(action)`
-- **تصمیم نهایی هرگز مستقیماً توسط مدل ثبت نمی‌شود.** مدل فقط *پیشنهاد* تصمیم می‌دهد. سیستم:
-  1. هویت فرستنده را بررسی می‌کند: آیا مسئول مجاز این Task است؟
-  2. بسته به سطح تأیید، خلاصه نهایی را نمایش می‌دهد و تأیید صریح می‌گیرد.
-  3. تصمیم را با `payload_hash` ثبت می‌کند.
-- **دکمه‌ها** («تأیید»، «رد») میانبر اختیاری همین ابزارها هستند، نه تنها راه.
-- **ثبت ممیزی:** متن خام پیام انسان، تفسیر مدل، نسخه payload و hash، همگی ثبت می‌شوند.
+**اقدام‌های سطح فرایند** (جلو، عقب، مسیر، Pause/Resume، لغو) به‌صورت رویداد `human_task.decided` (با فیلدهای `decision`، `route` و `reason`) یا `case.*` به n8n می‌روند. **اقدام‌های داخل Task** (Assign، Change، واگذاری) در Karyar انجام می‌شوند.
+
+## ۸.۴ پیشنهاد تغییر (Change Proposal)
 
 <pre class="ltr">
-Employee: "The age is incorrect. Change it to 38."
-  → agent calls task.patch(age=38)   → validated → revision #2 (by: employee, via: agent)
-Agent:    "Updated. Information is now complete."
-Employee: "Send it to the next step."
-  → agent calls task.propose_decision(approve)
-  → policy: confirmation_level=confirm → system renders final summary (hash h2)
-System:   "Confirm sending: Mohammad Rezaei, 38, Hair transplant … ? (yes/no)"
-Employee: "yes" → Decision{approve, by: employee, payload_hash: h2, raw_text: "yes"} → event human_task.completed
+Human: "Change the customer's mobile to 0935…"
+ → agent interprets → ChangeProposal{target, field, before, after, interpretation}
+ → shown as a diff: "Mobile: 0912… → 0935… — confirm?"
+ → authenticated assignee confirms explicitly (in-session "yes" or button)
+ → apply:  pre-registration → new draft revision
+           finalized ERPNext data → update through a business action (+ Approval Policy floor)
+ → audit: request(raw) · interpretation · proposal(before/after) · confirmation(who/when/how) · result · version
 </pre>
 
-**امنیت:** اختیار تأیید فقط از **هویت احرازشده مسئول Task** می‌آید، نه از محتوای پیام. اگر پیام مشتری حاوی «این را تأیید کن» باشد، هیچ اثری ندارد. این دفاع اصلی در برابر Prompt Injection است.
+- **تغییر حساس:** هر تغییر در داده پیش‌ثبت، داده کسب‌وکاری ERPNext، مسئول Task، مسیر یا وضعیت پرونده. یادداشت‌ها و نظرهای داخلی حساس نیستند.
+- **ذخیره در پنل فرم**، پس از نمایش Diff، خودش یک تأیید صریح است.
+- **چند تغییر** را می‌توان در یک Proposal دسته‌بندی کرد تا یک‌جا تأیید شوند. این خستگی ناشی از تأییدهای زیاد را کم می‌کند.
+- **تأیید تغییر ≠ تأیید مجوز:**
+  - **Change Confirmation:** درخواست‌کننده تأیید می‌کند که ایجنت درست فهمیده است.
+  - **Approval:** فرد یا افراد واجد شرایط اجازه ثبت نهایی می‌دهند.
+  - یک نفر ممکن است هر دو را انجام دهد، ولی دو رکورد جدا ثبت می‌شود.
 
-## ۸.۴ تأیید مشتری (Customer Confirmation)
+## ۸.۵ مدل تأیید (Approval) — از فاز ۱
 
-تأیید مشتری هم همین الگو را دارد:
+<pre class="ltr">
+Approval Policy (per operation / workflow, versioned)
+  stages: [                                   ordered stages = Sequential
+    { eligible: users | roles | responsibilities | expression,
+      required: M,                            1 = Single · M of N = M-of-N · all N = Parallel/Multi
+      exclude_requester: true }               no self-approval
+  ]
+  invalidate_on_change: all | later_stages    important change after approval → re-approval
+  reject_rule: any_reject_rejects | count_based
+  confirmation_level: none | confirm | strong
+</pre>
 
-1. Ava خلاصه را نمایش می‌دهد (نسخه `h1`).
-2. پاسخ «بله، درست است» از **همان هویت کانالِ مشتری**، به همان نسخه `h1` گره می‌خورد.
-3. اگر بعداً داده تغییر کند، تأیید مشتری برای نسخه جدید معتبر نیست. اینکه آیا دوباره تأیید لازم است، طبق سیاست گام تعیین می‌شود.
+| ساختار | بیان |
+|---|---|
+| Single | یک مرحله با `required=1` |
+| Multi-person / Parallel | یک مرحله با N نفر و `required=N`؛ همه همزمان |
+| M-of-N | یک مرحله با `required=M` |
+| Sequential | چند مرحله پشت سر هم |
+| ترکیبی | مثلاً مرحله ۱: یک سرپرست؛ مرحله ۲: دو نفر از سه مدیر |
+
+- **`Approval Request`:** مراحل، تأییدهای جمع‌شده، `approved_hash` و وضعیت را نگه می‌دارد. هر تأییدکننده یک Human Task از نوع `approval` در Workspace خودش دارد.
+- **تأیید به hash گره می‌خورد:** hash پیش‌ثبت به‌اضافه hash پیش‌نمایش ERPNext. هر تغییر مهم پس از تأیید، طبق `invalidate_on_change` تأییدها را باطل می‌کند و تأیید مجدد لازم است.
+- **کف ایمنی:** Promote فقط وقتی انجام می‌شود که Approval Request **با همان hash** کامل باشد، یا یک Auto-Execution Policy معتبر عملیات را مجاز کرده باشد. این کف حتی اگر Workflow در n8n گام تأیید را جا انداخته باشد اعمال می‌شود. در غیر این صورت `security.approval_missing` ثبت می‌شود.
+- **آینده:** مهلت، escalation خودکار و جانشین تأییدکننده.
+
+## ۸.۶ Human Task Template (پیکربندی برای هر Workflow)
+
+| تنظیم | توضیح |
+|---|---|
+| `assignee_rule` | کاربر، Frappe Role یا Responsibility. در صف، Task توسط یک نفر برداشته (claim) و قفل می‌شود |
+| `visible_fields` / `masked_fields` / `editable_fields` / `required_fields` | محدوده داده |
+| `allowed_actions` / `allowed_routes` | اقدام‌ها و مسیرهای مجاز |
+| `approval_policy` | ارجاع به Policy |
+| `can_delegate_to` | Responsibilityها یا Integration Targetهای قابل واگذاری (در محدوده Delegation Policy) |
+
+**تنظیمات در Karyar است.** n8n هنگام ساخت Task فقط می‌تواند آن‌ها را **محدودتر** کند، هرگز گسترده‌تر.
+
+## ۸.۷ امنیت تصمیم
+
+- **اختیار تصمیم** فقط از Session کاربر احرازشده و مسئول همان Task می‌آید.
+- **متن پیام‌ها و دستورهای مشتری** هیچ اختیاری ایجاد نمی‌کنند. این دفاع اصلی در برابر Prompt Injection است.
+- **تغییرهای مشتری** پس از بازبینی، Task را «تغییرکرده» علامت می‌زنند و تأییدهای مرتبط را باطل می‌کنند.
+
+## ۸.۸ رابط کاربری
+
+- **بخش اصلی:** گفت‌وگو.
+- **پنل کناری:** داده، Diff، Proposalها، Approvalها، Timeline و کارهای واگذارشده.
+- **فاز ۱:** فقط Workspace وب. انجام Task از پیام‌رسان برای کارکنان به آینده موکول شده است.
+- **پیاده‌سازی:** یک SPA داخل Frappe، به الگوی `erpnext/banking` (React و `frappe-react-sdk`) یا frappe-ui. انتخاب فناوری باز است.
 
 # ۹. معماری رویداد
 
-## ۹.۱ منابع رویداد
-
-| منبع | سازوکار |
+| منبع | سازوکار (فاز ۱) |
 |---|---|
-| ERPNext / Frappe | `doc_events` برای DocTypeهای ثبت‌شده در «Event Source»، روی `after_insert`، `on_update`، `on_submit`، `on_cancel` و `on_update_after_submit` |
-| Karyar | تکمیل گام، تصمیم انسانی، پیشنهاد ایجنت، پیام کانال |
-| بیرونی | Webhook ورودی، callback از n8n، نتیجه RPA، پاسخ مودیان |
-| زمان | Scheduler، مثل «هر روز ساعت ۸»، و تایمرهای مهلت |
+| ERPNext | **DocType ‏Webhook استاندارد Frappe** (شرط‌گذاری، امضای HMAC و لاگ) به n8n. مثال: `erp.lead.created` و `erp.sales_order.submitted` |
+| Karyar | `emit_event()` پس از commit. نمونه‌ها: `intake.completed`، `agent.task.completed`، `human_task.decided`، `approval.completed`، `case.paused`، `case.resumed`، `case.cancelled` |
+| بیرونی | callback از n8n به Karyar API (امضاشده) |
+| زمان | Cron در n8n. Scheduler در Frappe برای نگهداری داده و پاک‌سازی |
 
-## ۹.۲ Transactional Outbox
+**پوشش رویداد:** `event_id`، `type`، `tenant`، `occurred_at`، `subject` (doctype/name یا case)، `actor`، `correlation_id`، و یک `payload` حداقلی. مصرف‌کننده جزئیات را **با مجوز خودش** از API می‌خواند.
 
-<pre class="ltr">
-doc_event (same DB transaction as the business change)
-   └─ insert "Karyar Event" row  {status: pending}
-frappe.db.after_commit → enqueue("karyar.events.dispatch", queue="karyar_events")
-dispatcher:
-   match subscriptions (workflow triggers, waiting steps, outbound webhooks/n8n)
-   → create/advance Workflow Runs (idempotent by event_id)
-   → mark event dispatched
-scheduler sweep (every minute): re-dispatch pending events older than N seconds
-</pre>
+**قابلیت اطمینان:** Webhook در Frappe و `emit_event` شکست‌ها را لاگ می‌کنند. یک Workflow زمان‌بندی‌شده در n8n «پرونده‌های بی‌حرکت» را از Karyar می‌پرسد. Outbox اختصاصی به آینده موکول شده است.
 
-- **چرا Outbox؟** اگر رویداد مستقیماً بعد از تغییر سند به صف فرستاده شود، ممکن است تراکنش rollback شود و رویداد «دروغ» منتشر شود، یا برعکس، commit انجام شود ولی صف از دست برود. Outbox هر دو را حل می‌کند: تحویل دست‌کم‌یک‌بار (at-least-once) همراه با مصرف‌کننده idempotent.
-- **پوشش Wildcard:** استفاده از `"*"` در `doc_events` روی همه DocTypeها پرهزینه است. فقط DocTypeهایی که در پیکربندی «Event Source» فعال شده‌اند (با کش) رویداد تولید می‌کنند.
+# ۱۰. واگذاری و ارتباط ایجنت با ایجنت
 
-## ۹.۳ پوشش استاندارد رویداد
+**سه شکل ارتباط:**
 
-<pre class="ltr">
-{ "event_id": "uuid", "type": "erp.sales_order.submitted", "schema_version": 1,
-  "tenant": "acme.karyar.ir", "occurred_at": "...",
-  "subject": {"doctype": "Sales Order", "name": "SO-0042"},
-  "actor": {"type": "human|agent|system|customer", "id": "..."},
-  "correlation_id": "run/RUN-0007", "causation_id": "event/...",
-  "payload": { minimal, non-sensitive fields } }
-</pre>
+1. **حرکت بین مراحل فرایند:** با رویداد و n8n.
+2. **واگذاری کنترل‌شده (Delegation):** **داخل Karyar.** ایجنت یا انسان یک `Agent Task` برای ایجنت دیگر یا یک Integration Target می‌سازد.
+3. **ارجاع از طریق ERPNext:** سندی ثبت می‌شود و رویداد آن فرایند دیگری را آغاز می‌کند.
 
-payload عمداً حداقلی است. مصرف‌کننده برای جزئیات، داده را با ابزار و **با مجوز خودش** از ERPNext می‌خواند. این کار از نشت داده از طریق رویدادها جلوگیری می‌کند.
+**چت آزاد ایجنت با ایجنت وجود ندارد.**
 
-## ۹.۴ چرا Kafka یا RabbitMQ نه (فعلاً)؟
-
-Redis Queue (RQ) و Outbox مبتنی بر MariaDB همین حالا در Frappe وجود دارند و برای بار یک Tenant کافی‌اند. وقتی به جریان رویداد **بین Tenantها** نیاز شد، مثلاً برای اندازه‌گیری مرکزی مصرف یا تحلیل، می‌شود یک **Relay** از Outbox به NATS، Redis Streams یا Kafka اضافه کرد. هیچ تولیدکننده‌ای لازم نیست تغییر کند.
-
-# ۱۰. ارتباط ایجنت با ایجنت
-
-**اصل:** ایجنت‌ها با هم «چت» نمی‌کنند. ارتباط فقط از سه راه است:
-
-1. **تحویل از راه گردش‌کار (اصلی):**
-   1. ایجنت A گام خود را با **خروجی ساخت‌یافته** (طبق Schema) تمام می‌کند و خروجی در `context` پرونده ذخیره می‌شود.
-   2. رویداد `workflow.step.completed` منتشر می‌شود.
-   3. گام بعدی به نقش کاری X تعلق دارد. جدول انتساب می‌گوید X با ایجنت B است.
-   4. ایجنت B یک **دستور کار (Task Brief)** دریافت می‌کند که از context ساخته شده است، **نه** متن خام گفت‌وگوی A.
-2. **تحویل از راه ERPNext:** ایجنت A سندی می‌سازد (مثلاً Lead)، رویداد ERPNext منتشر می‌شود و گردش‌کار دیگری که trigger آن «Lead ایجاد شد» است برای ایجنت B شروع می‌شود.
-3. **مشاوره کنترل‌شده (آینده):** ابزار `consult(responsibility, question)` که فقط اطلاعات **فقط‌خواندنی** و در محدوده مجوز برمی‌گرداند و ثبت می‌شود. در فاز ۱ وجود ندارد.
-
-**چرا Task Brief به‌جای متن گفت‌وگو؟**
-
-- **جلوگیری از انتقال Prompt Injection:** متن مشتری ممکن است دستور مخرب داشته باشد.
-- **کاهش هزینه token.**
-- **کمینه‌سازی داده:** ایجنت حسابداری لازم نیست کل گفت‌وگوی پزشکی را ببیند.
-- **قابلیت ممیزی:** مشخص است دقیقاً چه چیزی تحویل شده است.
+- **Delegation Policy** (در `Karyar Settings`) مشخص می‌کند:
+  - کدام Responsibility به کدام Responsibility یا Integration Target کار بسپارد
+  - با کدام توانمندی‌ها
+  - آیا تأیید انسانی لازم است
+  - دامنه کار (مثلاً فقط مخاطبانِ همین پرونده)
+  - محدودیت تعداد
+- **`Agent Task`** این‌ها را نگه می‌دارد:
+  - والد (Case یا Task)
+  - درخواست‌دهنده: ایجنت، **از طرف کدام انسان**، و بر اساس کدام Policy
+  - مقصد
+  - دستور کار ساخت‌یافته (ارجاع، نه کپی)
+  - وضعیت: `queued`، `running`، `waiting_customer`، `completed`، `failed` یا `cancelled`
+  - نتیجه و زنجیره واگذاری
+- **عدم افزایش اختیار:** اختیار Agent Task برابر است با **اشتراکِ** اختیار Principal اولیه، توانمندی ایجنت واگذارکننده، توانمندی مقصد و Delegation Policy.
+- **محدودیت‌ها:** عمق زنجیره حداکثر ۲ (پیش‌فرض). چرخه ممنوع است.
+- **بازگشت نتیجه:** رویداد `agent.task.completed` منتشر می‌شود. نتیجه در Workspace نمایش داده می‌شود. اگر داده را تغییر دهد، به‌صورت **Change Proposal** به انسان ارائه می‌شود.
+- **Integration Target:** یک فهرست حداقلی شامل نام، Workflow مربوط در n8n، Schema ورودی و خروجی، توانمندی لازم، سیاست تأیید و محدودیت‌های کانال. Karyar آغاز، مجوز و ثبت را انجام می‌دهد و n8n اجرا می‌کند و نتیجه را با callback برمی‌گرداند.
+- **Task Brief:** ایجنت مقصد یک دستور کار ساخت‌یافته دریافت می‌کند، نه متن خام گفت‌وگو. این از انتقال Prompt Injection جلوگیری می‌کند و داده کمتری منتقل می‌شود.
 
 # ۱۱. معماری مجوز
 
-## ۱۱.۱ زنجیره مجوز
+## ۱۱.۱ زنجیره مجوز (همیشه در کد)
 
 <pre class="ltr">
-Tenant (site)         → which packs/capabilities/integrations are licensed & enabled
-  └ Principal         → who is acting: Human User | Agent Service User | Channel Contact | Integration
-     └ Agent          → which Responsibilities → Capabilities it may use
-        └ Step scope  → which Capabilities & which records are allowed in THIS workflow step
-           └ Frappe   → DocType perms, User Permissions, permlevel, has_permission hooks
-              └ Output filter → field whitelist per tool + masking by data classification
-Effective = Tenant ∩ Agent ∩ Step ∩ Principal(Frappe)    — evaluated in code, never in the prompt
+Tenant (site)          → enabled packs, capabilities, integrations
+ └ Principal / User    → authenticated human | agent service user | channel contact | integration (n8n)
+    └ Agent            → which Responsibilities it holds
+       └ Responsibility → which Capabilities
+          └ Capability  → which tools / reports / integration targets
+             └ Workflow step / Task template → allowed actions, fields, records in THIS step
+                └ ERPNext permission → DocType perms, User Permissions (e.g. branch), permlevel, has_permission
+Effective = intersection of all levels.  Delegation: also ∩ the initiating principal.
+A prompt can never add a permission or an approval.
 </pre>
 
-## ۱۱.۲ اصل «از طرفِ چه کسی؟» (On-behalf-of)
+## ۱۱.۲ از طرفِ چه کسی؟ (On-behalf-of)
 
 | موقعیت | هویت اجرایی | نتیجه |
 |---|---|---|
-| کارمند با ایجنت گفت‌وگو می‌کند | **کاربر همان کارمند** (`frappe.set_user`)، به‌علاوه فیلتر توانمندی ایجنت | ایجنت هرگز بیش از خود کارمند نمی‌بیند |
-| گام خودکار گردش‌کار (بدون انسان) | کاربر سرویس ایجنت، با Frappe Roleهای مشتق از توانمندی‌ها، **محدود به رکوردهای همین پرونده** | دسترسی حداقلی |
-| مشتری بیرونی در کانال | «Contact Principal» بدون دسترسی Desk. ابزارهای ویژه که فقط داده همان مخاطب را برمی‌گردانند | مشتری فقط داده خودش را می‌بیند |
-| n8n یا سیستم بیرونی | کاربر یکپارچه‌سازی با توانمندی‌های تعریف‌شده و کلید API یا OAuth | محدود به Karyar API |
+| کارمند در Workspace با ایجنت | **کاربر همان کارمند** (`frappe.set_user`)، به‌علاوه فیلتر توانمندی و گام | ایجنت هرگز بیش از کارمند نمی‌بیند |
+| کار فرایندی خودکار | کاربر سرویس ایجنت، محدود به رکوردهای همان پرونده | دسترسی حداقلی |
+| کار واگذارشده | اشتراک اختیار Principal اولیه و همه حلقه‌های زنجیره | بدون افزایش اختیار |
+| مشتری در کانال | Contact Principal با ابزارهایی که فقط داده همان مخاطب را برمی‌گردانند | مشتری فقط داده خودش |
+| n8n | کاربر یکپارچه‌سازی **هر Tenant** با کلید API مجزا و توانمندی‌های محدود | فقط Karyar API |
 
-**مثال سؤال «سود کل شرکت چقدر است؟» از کارمند عادی:**
+## ۱۱.۳ قواعد پیاده‌سازی
 
-1. ایجنت ممکن است ابزار `report.profit_and_loss` را صدا بزند.
-2. Tool Executor بررسی می‌کند: آیا این کارمند به گزارش «Profit and Loss Statement» دسترسی Frappe دارد؟ جواب منفی است.
-3. نتیجه `PERMISSION_DENIED` برمی‌گردد و **هیچ داده‌ای به مدل نمی‌رسد**.
-4. ایجنت فقط توضیح می‌دهد که دسترسی ندارد.
+- ابزارها فقط از APIهای مجوزدار استفاده می‌کنند: `get_list`، `check_permission`، `has_permission`، `query_report.run`.
+- **`frappe.get_all`، `ignore_permissions=True` و `frappe.db.sql` در ابزارها ممنوع است.** این با قانون semgrep در CI بررسی می‌شود.
+- **Schema خروجی** هر ابزار تعیین می‌کند چه فیلدهایی برگردد. فیلدهای بالاتر از permlevel کاربر پوشانده می‌شوند.
+- **مثال:** کارمند فروش «سود کل» را می‌پرسد. نقش او به گزارش دسترسی ندارد، پس نتیجه `PERMISSION_DENIED` است و **هیچ عددی به مدل نمی‌رسد**.
+- **منع تأیید توسط خود:** درخواست‌کننده نمی‌تواند درخواست خودش را تأیید کند (`exclude_requester`).
 
-حتی اگر prompt دستکاری شود، داده‌ای برای نشت وجود ندارد.
+# ۱۲. یکپارچگی با ERPNext (ERPNext-first)
 
-## ۱۱.۳ قواعد پیاده‌سازی (قابل بررسی خودکار)
+## ۱۲.۱ چه چیزی به ERPNext سپرده می‌شود
 
-- ابزارها فقط از APIهای مجوزدار استفاده می‌کنند: `frappe.get_list`، `doc.check_permission`، `frappe.has_permission`، `query_report.run`.
-- **استفاده از `frappe.get_all`، `ignore_permissions=True` و `frappe.db.sql` در ماژول ابزارها ممنوع است.** این قاعده با یک قانون semgrep در CI بررسی می‌شود (ERPNext خودش semgrep دارد). استثنا فقط با بازبینی امنیتی و توضیح مکتوب مجاز است.
-- هر ابزار یک **Schema خروجی** دارد. فیلدهای خارج از Schema حذف می‌شوند. فیلدهای دارای permlevel بالاتر از سطح دسترسی principal پوشانده می‌شوند.
-- **طبقه‌بندی داده** (فاز ۲): فیلدها با برچسب‌هایی مثل `pii`، `financial`، `medical` علامت‌گذاری می‌شوند. سیاست Tenant تعیین می‌کند کدام برچسب‌ها اجازه دارند به ارائه‌دهنده بیرونی AI فرستاده شوند (بخش ۱۹).
+| نیاز | قابلیت استاندارد ERPNext/Frappe | کار Karyar |
+|---|---|---|
+| ثبت و اعتبارسنجی اسناد | کنترلرها، `insert` و `submit`، توابع `make_*` | فقط فراخوانی از طریق Promote |
+| محاسبه مالیات، جمع و دفتر کل | `calculate_taxes_and_totals`، پیش‌نمایش دفتر کل (`get_accounting_ledger_preview`) | پیش‌نمایش **بدون ذخیره** و hash |
+| اعتبار مشتری، قیمت، موجودی | Credit Limit، Price List، Projected Qty | خواندن از طریق ابزار؛ بدون قاعده موازی |
+| سفارش مجدد خودکار | Reorder Level و Material Request خودکار | فقط واکنش به رویداد |
+| تاریخچه تغییرات اسناد | `Version` (track changes) | ممیزی **معنایی** مکمل؛ تغییرات میدانی تکرار نمی‌شود |
+| تخصیص و اعلان | `ToDo`، `assign_to`، Assignment Rule، Notification | Human Task به‌جای ساختن سیستم اعلان جدا از این‌ها استفاده می‌کند |
+| ایمیل | Email Account، Email Queue، ارسال سند با Print Format | ایجنت درخواست ارسال می‌کند و ERPNext می‌فرستد |
+| پیامک تراکنشی ساده | SMS Settings | برای پیامک ساده. پیامک انبوه و APIهای خاص با n8n |
+| تاریخچه تعامل با مشتری | `Communication` (medium‌های Chat، SMS و Phone) و Timeline | خلاصه گفت‌وگو پس از اتصال به مخاطب در Timeline ثبت می‌شود |
+| اطلاعات تماس | Contact (`phone_nos`، `email_ids`، `mobile_no`)، Lead (`whatsapp_no`) | فقط کانال‌های بدون فیلد استاندارد در `Contact Channel` |
+| کمپین | `Campaign` (ماژول CRM) | رکورد کسب‌وکاری کمپین در ERPNext؛ اجرا با Karyar و n8n |
+| گزارش | Query/Script Reports، Prepared Report | Report Catalog و فقط گزارش‌های مکمل |
+| بومی‌سازی | Tax Template، Tax Withholding Category، `regional_overrides`، `create_charts` | `karyar_iran` روی همین‌ها |
+| تأیید اسنادی که در Desk ساخته می‌شوند | Frappe Workflow | دخالت نمی‌کند |
+| نمایش پرونده‌های در جریان در ERPNext | Connections dashboard (`override_doctype_dashboards`) | `Karyar Case` در Connections مشتری، Lead و غیره |
 
-## ۱۱.۴ محدودیت Frappe که باید صریح گفته شود
+## ۱۲.۲ پیش‌ثبت (Pre-Registration) و Promote
 
-- مدل مجوز Frappe **نقش‌محور (RBAC) به‌علاوه User Permission** است، نه ABAC کامل. منطق ظریف‌تر از راه hookهای `has_permission` و `permission_query_conditions` پیاده می‌شود.
-- **گزارش‌های Query/Script** ممکن است فقط در سطح نقش کنترل شوند و User Permission را کامل اعمال نکنند. بنابراین ایجنت فقط به **فهرست گزینش‌شده گزارش‌ها** (Report Catalog) دسترسی دارد. هر گزارش قبل از ورود به فهرست، از نظر مجوز بازبینی می‌شود.
+- **پیش‌فرض:** داده در حال تکمیل و پیش‌نویس‌ها **فقط در Karyar** (`Karyar Case.draft_data`) هستند. **قبل از تأیید هیچ سند کسب‌وکاری در ERPNext ساخته نمی‌شود.**
+  - چون Karyar و ERPNext روی یک Site هستند، پرونده در جریان در Desk و در Connections اسناد مرتبط **قابل مشاهده** است.
+  - اطلاعات پایه (Lead، Customer، Contact) قبل از تأیید ساخته نمی‌شوند. **استثنا:** گزینه «Lead ناقص» که برای هر Workflow قابل تنظیم و پیش‌فرض آن خاموش است.
+- **فقط دلتا:** برای موجودیت‌های موجود، پیش‌ثبت فقط ارجاع به‌علاوه داده جدید یا تغییرکرده را نگه می‌دارد.
+- **پیش‌نمایش:** محاسبات متعلق به ERPNext روی سندِ **در حافظه** و بدون ذخیره اجرا می‌شود. hash آن جزو چیزی است که تأیید می‌شود.
+  - تابع عمومی پیش‌نمایش دفتر کل در v16 به سند ذخیره‌شده نیاز دارد. پس از تابع داخلی روی سندِ در حافظه استفاده می‌شود.
+  - **راه جایگزین:** savepoint و سپس rollback.
+  - **کار فنی فاز ۱:** آزمایش کوتاه (spike) برای Sales Invoice و Journal Entry.
+- **Promote** (تنها مسیر ثبت نهایی) به ترتیب این کارها را انجام می‌دهد:
+  1. بررسی کامل بودن طبق Schema
+  2. بررسی مجوز و وضعیت پرونده (نباید paused یا cancelled باشد)
+  3. بررسی Approval Request با **همان hash**، یا Auto-Execution Policy معتبر
+  4. محاسبه دوباره پیش‌نمایش. اگر متفاوت بود، توقف و درخواست تأیید مجدد
+  5. ثبت با کنترلرهای ERPNext و `idempotency_key`
+  6. ذخیره ارجاع در Case، و قفل کردن پیش‌ثبت به‌عنوان «منتقل‌شده»
+- **پیش‌نویس اختیاری در ERPNext** (`erp_draft_mode`، **پیش‌فرض خاموش**):
+  - فقط برای اسناد ثبت‌شدنی و فقط وقتی یک Workflow واقعاً به آن نیاز دارد.
+  - Karyar یک سند با `docstatus=0` می‌سازد که `karyar_case` و `karyar_locked=1` دارد.
+  - ویرایش آن در Desk با `validate` و `has_permission` مسدود است. فقط Karyar پس از تغییرِ تأییدشده آن را به‌روز می‌کند.
+  - در Promote همان سند Submit می‌شود.
+  - منبع ویرایش همچنان یکی است (Karyar)، پس Karyar ERP دوم نمی‌شود.
+- **پس از ثبت نهایی:** داده اصلی فقط از ERPNext خوانده می‌شود.
+  - اصلاح بعدی از طریق Change Proposal و یک اقدام کسب‌وکاری روی ERPNext انجام می‌شود.
+  - لغو یا اصلاح سند (Amend) با سازوکار استاندارد ERPNext و تحت Approval Policy است.
+  - snapshot تأییدشده فقط برای ممیزی نگه داشته می‌شود.
 
-# ۱۲. معماری یکپارچگی با ERPNext
+## ۱۲.۳ شناسه‌های کانال مشتری
 
-| موضوع | تصمیم |
-|---|---|
-| خواندن | از ابزارها، با `get_list` یا `get_doc` و مجوز principal |
-| نوشتن | فقط از ابزارهای `draft-write` (سند در وضعیت `docstatus=0`) و `commit-write` (submit یا cancel) |
-| منطق کسب‌وکار | **از کنترلرهای ERPNext استفاده می‌شود** (`doc.insert()`، `doc.submit()`، توابع `make_*` مثل `make_sales_invoice`)، نه نوشتن مستقیم جدول. همه اعتبارسنجی‌های ERPNext حفظ می‌شوند |
-| فیلدهای اضافه | Custom Field و Property Setter به‌صورت fixtures در اپ Karyar یا Pack. **هرگز** تغییر JSON DocTypeهای ERPNext |
-| رفتار اضافه | `doc_events` و `extend_doctype_class`. از `override_doctype_class` فقط در صورت اجبار و با مستندسازی استفاده می‌شود. Monkey-patch ممنوع است |
-| وضعیت فرایند | در Karyar Run نگه داشته می‌شود. وضعیت سند (`docstatus` و `status`) در ERPNext است. Frappe Workflow روی DocTypeهایی که Karyar مدیریت می‌کند **فعال نمی‌شود** تا دو ماشین حالت روی یک سند نداشته باشیم (بخش ۳۳) |
-| ارجاع | Karyar Run فقط **ارجاع** (`doctype`/`name`) به سند ERPNext نگه می‌دارد، نه کپی داده. تنها استثنا snapshot لازم برای ممیزی تأیید است |
-| Idempotency | فیلد سفارشی `karyar_idempotency_key` روی DocTypeهایی که ابزارها می‌سازند، همراه با بررسی یکتایی |
+**جدول فرزند سفارشی `Contact Channel` روی Contact** (به‌صورت fixture و بدون تغییر هسته). فیلدها:
 
-**نمایه ابزار (Tool Contract):**
+- `channel`: telegram، instagram، whatsapp، bale، eitaa، web، sms، phone، email
+- `identifier`: برای کانال‌های بدون فیلد استاندارد
+- `display_handle`
+- `verified`
+- `consent_marketing`
+- `opted_out_at`
+- `last_inbound_at`: برای پنجره زمانی پاسخ در برخی کانال‌ها
+- `is_primary`
+- `source_case`
+
+**قواعد:**
+
+- مقدار تلفن و ایمیل فقط در فیلدهای استاندارد Contact می‌ماند. ردیف `Contact Channel` برای این کانال‌ها فقط رضایت، انصراف و آخرین تماس را نگه می‌دارد.
+- Lead و Customer از طریق `links` در Contact به این جدول دسترسی دارند. `whatsapp_no` در Lead هم استاندارد است و حفظ می‌شود.
+- **پیش از ثبت نهایی**، شناسه کانال در پیش‌ثبت و Conversation است. در Promote به Contact منتقل می‌شود.
+- **`Contact Identity` در Karyar حذف شد.** Channel Gateway برای مسیریابی پیام‌های ورودی فقط یک index قابل بازسازی از روی `Contact Channel` دارد.
+
+## ۱۲.۴ قرارداد ابزار
 
 <pre class="ltr">
-@karyar_tool(
-  name="crm.lead.create_draft", capability="crm.lead.draft",
-  side_effect="draft-write", risk="low",
-  input_schema=LeadDraftIn, output_schema=LeadRef,
-  required_perms=[("Lead", "create")], idempotent=True)
-def create_lead_draft(inp: LeadDraftIn, ctx: ToolContext) -> LeadRef: ...
+@karyar_tool(name="crm.lead.propose", capability="crm.lead.draft",
+             side_effect="draft", risk="low",
+             input_schema=LeadDraftIn, output_schema=CaseRef,
+             required_perms=[("Lead", "create")], idempotent=True)
 </pre>
 
-# ۱۳. معماری Karyar API
+انواع اثر ابزار (`side_effect`):
 
-- **یک لایه سرویس، سه نمایش.** منطق در «سرویس‌های توانمندی» نوشته می‌شود و از سه راه در دسترس قرار می‌گیرد:
+- `read`
+- `draft` (فقط پیش‌ثبت در Karyar)
+- `promote` (ثبت نهایی؛ همیشه از دروازه Promote)
+- `external` (Integration)
+
+# ۱۳. Karyar API
+
+- **منطق یکتا، چند نمایش:** سرویس‌های Karyar از سه راه در دسترس‌اند:
   1. ابزارهای ایجنت
-  2. REST: ‏`/api/method/karyar.api.v1.<resource>.<action>` یا مسیرهای v2 در Frappe
-  3. (فاز بعد) MCP با کتابخانه `frappe-mcp` برای ایجنت‌های بیرونی
-- **نسخه‌داری:** `v1` پایدار است. تغییرات فقط افزایشی‌اند و تغییر ناسازگار یعنی `v2`. DTOها با Schema صریح تعریف می‌شوند، **نه** ساختار خام DocType. به این ترتیب تغییر نام فیلد در ERPNext نسخه ۱۷ مصرف‌کننده‌ها را نمی‌شکند.
+  2. REST نسخه ۱ (`/api/method/karyar.api.v1.*`)
+  3. MCP در آینده
 - **احراز هویت:**
-  - کلید API/Secret برای سیستم‌ها (n8n)
-  - OAuth2 برای اپ‌ها و ایجنت‌های بیرونی (Frappe خودش OAuth Provider است)
+  - کلید API برای n8n، **جدا برای هر Tenant**
   - Session برای Workspace
-- **محدودیت نرخ و اندازه** برای هر principal.
-- **منابع اولیه v1 (حداقلی):** `conversations`، `messages` (ورودی کانال‌ها)، `runs` (شروع و وضعیت پرونده)، `tasks` (صندوق کار انسانی)، `events/callback` (callback از n8n و RPA)، و `tools/invoke` (فقط برای principalهای مجاز).
-- **Webhook خروجی:** با سازوکار Webhook در Frappe و امضای HMAC، یا از دیسپچر رویداد Karyar.
+  - OAuth2 برای اپ‌های بیرونی
+- **idempotency:** همه endpointهای تغییردهنده `idempotency_key` می‌پذیرند.
+- **امضا:** همه callbackها امضای HMAC دارند.
+
+**endpointهای فاز ۱:**
+
+| گروه | endpointها |
+|---|---|
+| Case | `cases.create`، `get`، `set_stage`، `pause`، `resume`، `cancel`، `timeline` |
+| Agent | `agents.run_task` (ناهمگام)، `agent_tasks.create`، `get` |
+| Human Task | `human_tasks.create(template)`، `get`، `claim`، `assign`، `decide` |
+| Change | `changes.propose`، `confirm`، `reject` |
+| Approval | `approvals.create`، `status`، `grant`، `deny` |
+| Promote | `promote(case, operation)` (تنها مسیر ثبت نهایی) |
+| Integration | `integrations.callback(agent_task)`، `integrations.needs_input` (برای OTP و CAPTCHA در آینده) |
 
 # ۱۴. معماری گزارش‌گیری
 
 | اولویت | منبع | سازوکار |
 |---|---|---|
-| ۱ | گزارش‌های استاندارد ERPNext | ورود به **Report Catalog** با شناسه، توضیح، Schema فیلترهای مجاز و ستون‌های مجاز. اجرا با `frappe.desk.query_report.run` با هویت principal |
-| ۲ | گزارش‌های Karyar | تابع Python از پیش نوشته‌شده با Schema ورودی و خروجی که در کد بازبینی شده است. ترکیبی‌ها هم همین‌جا هستند، مثل «خلاصه مدیریتی = فروش + دریافتنی + موجودی بحرانی» |
-| ۳ (بعد) | Frappe Insights | برای داشبوردهای انسانی، نه برای پرسش آزاد ایجنت |
-| ❌ | SQL ساخته‌شده توسط هوش مصنوعی | ممنوع |
+| ۱ | **گزارش‌های استاندارد ERPNext** | **Report Catalog** شامل شناسه، Schema فیلترهای مجاز و ستون‌های مجاز. اجرا با `query_report.run` و هویت Principal |
+| ۲ | **گزارش‌ها و Queryهای کنترل‌شده Karyar** | تابع Python از پیش نوشته‌شده با Schema، **فقط وقتی** ERPNext گزارش معادل ندارد. مثال: «مشتریان دارای خرید در بازه X همراه با رضایت کانال» |
+| ۳ (آینده) | Frappe Insights | داشبورد برای انسان |
+| ❌ | SQL ساخته‌شده توسط AI | ممنوع |
 
-**نقش هوش مصنوعی در گزارش:**
-
-1. فهم درخواست
-2. انتخاب گزارش از فهرست مجاز
-3. پر کردن پارامترها (با اعتبارسنجی Schema)
-4. تفسیر و توضیح
-
-**اعداد همیشه از نتیجه گزارش می‌آیند.** مدل محاسبه نمی‌کند. اگر نسبت یا جمع لازم است، گزارش Karyar آن را محاسبه می‌کند. پاسخ ایجنت **منبع** را هم نشان می‌دهد: نام گزارش، فیلترها و زمان اجرا.
-
-**(فاز ۲) بررسی عدد:** یک بررسی خودکار کنترل می‌کند هر عدد در متن پاسخ، در داده نتیجه وجود داشته باشد.
-
-**عملکرد:** گزارش‌های سنگین به‌صورت **Prepared Report** اجرا می‌شوند. در صورت نیاز از **Read Replica** پایگاه داده استفاده می‌شود که Frappe پشتیبانی می‌کند.
+- **اعداد همیشه از نتیجه گزارش می‌آیند**، و پاسخ منبع خود را نشان می‌دهد: نام گزارش، فیلترها و زمان.
+- **پرونده‌های در جریان** فقط در داشبورد عملیاتی Karyar دیده می‌شوند. در گزارش‌های کسب‌وکاری ERPNext نمی‌آیند.
+- **گزارش‌های سنگین** با Prepared Report و در صورت نیاز Read Replica اجرا می‌شوند.
 
 # ۱۵. معماری مدل هوش مصنوعی
 
 <pre class="ltr">
-Agent Runtime ──► AIGateway.complete(ModelRequest) ──► ProviderAdapter ──► Provider/Model
-                     │  alias → (provider, model, params, fallback chain)  [per tenant]
-                     │  structured-output enforcement (JSON Schema validate + 1 retry)
-                     │  redaction hook (data classification policy)
-                     │  timeouts / retries / circuit breaker
-                     └► UsageSink.record(UsageRecord)   ← extension point (section 16)
+Agent Runtime → AIGateway.complete(request) → ProviderAdapter → Provider/Model
+     alias → (provider, model, params, fallback)  per tenant
+     JSON-schema enforcement · redaction by data classification · timeouts/retries
+     → UsageSink.record(UsageRecord)
 </pre>
 
-- **آداپتورها:**
-  - **«سازگار با OpenAI»:** بیشتر ارائه‌دهندگان، درگاه‌های داخلی و مدل‌های خودمیزبان (vLLM و Ollama) را پوشش می‌دهد.
-  - آداپتورهای اختصاصی، مثلاً Anthropic و Google، در صورت نیاز.
-  - همه آداپتورها از راه hook ‏`karyar_ai_providers` قابل افزودن‌اند.
-- **پیکربندی مدل:**
-  - `Model Profile` در هر Tenant، نام مستعار (`fast`، `smart`، `local-private`) را به مدل واقعی نگاشت می‌کند.
-  - ایجنت فقط نام مستعار را می‌شناسد. تعویض ارائه‌دهنده یعنی تغییر یک رکورد.
-- **دستورالعمل‌ها:** `Prompt Template` نسخه‌دار. هر نوبت ایجنت نسخه دستورالعمل را ثبت می‌کند تا بشود رفتار را بازتولید کرد.
-- **کلیدها:** «کلید سکو» (Karyar هزینه AI را می‌فروشد) یا «کلید مشتری» (BYOK). هر دو در فیلد Password سایت ذخیره می‌شوند. **تصمیم تجاری لازم است.**
-- **LiteLLM Proxy:** گزینه فاز ۲ یا ۳، وقتی بودجه‌بندی، کلیدهای مجازی و مسیریابی مرکزی لازم شد. چون همه ترافیک از `AIGateway` می‌گذرد، جایگزینی بدون تغییر ایجنت‌هاست.
-- **⚠️ واقعیت ایران:**
-  - دسترسی به برخی ارائه‌دهندگان بین‌المللی از ایران به دلیل تحریم و سیاست ارائه‌دهندگان محدود است.
-  - فرستادن داده مشتری (به‌ویژه داده پزشکی یا مالی) به خارج پیامد حقوقی دارد.
-  - معماری باید از روز اول **مدل خودمیزبان یا داخلی** را به‌عنوان گزینه درجه‌یک پشتیبانی کند.
-  - کیفیت زبان فارسی هر مدل باید با **مجموعه ارزیابی فارسی** سنجیده شود.
+- **آداپتورها:** «سازگار با OpenAI» (که ارائه‌دهندگان داخلی و مدل‌های خودمیزبان را هم پوشش می‌دهد)، به‌علاوه آداپتورهای اختصاصی از طریق `karyar_ai_providers`.
+- **Model Profile** در هر Tenant: نام مستعار را به مدل واقعی نگاشت می‌کند.
+- **Prompt Template** نسخه‌دار است.
+- **کلید API** در فیلد Password سایت Tenant ذخیره می‌شود.
+- **LiteLLM Proxy** گزینه آینده است.
+- ⚠️ **ایران:** دسترسی به برخی ارائه‌دهندگان بین‌المللی محدود است و ارسال داده حساس به خارج پیامد حقوقی دارد. پشتیبانی از مدل خودمیزبان یا داخلی از روز اول لازم است، همراه با ارزیابی کیفیت فارسی هر مدل.
 
-# ۱۶. نقطه توسعه هزینه و token (AI Cost / Token Tracking)
+# ۱۶. مصرف و هزینه AI
 
-**الان ساخته نمی‌شود**؛ فقط جای تمیز آن گذاشته می‌شود:
-
-**`UsageRecord` در هر فراخوانی AI Gateway:**
+**`UsageRecord` در هر فراخوانی:**
 
 <pre class="ltr">
-request_id, tenant, agent, responsibility, workflow, run, step, conversation, api_principal,
-provider, model, model_alias, input_tokens, output_tokens, cached_tokens, total_tokens,
-latency_ms, status, price_version, estimated_cost, currency, actual_cost (nullable), timestamp
+request_id, tenant, agent, responsibility, user (on-behalf-of), case, task (human/agent task),
+workflow (n8n process + segment), conversation, provider, model, model_alias,
+input_tokens, output_tokens, cached_tokens, total_tokens, latency_ms, status,
+price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 </pre>
 
-- **`UsageSink`:** یک رابط است. در فاز ۱ دو پیاده‌سازی دارد:
-  1. DocType ‏`Karyar AI Usage` در همان سایت
-  2. یک خط لاگ JSON ساخت‌یافته
+- **فاز ۱:**
+  - ذخیره در `AI Usage Log` با گزارش بر اساس Tenant، Agent، Workflow، User و Task
+  - **سقف سخت** مصرف روزانه برای هر Tenant و هر Agent
+  - جدول نسخه‌دار `Model Price`
+- **آینده:**
+  - `UsageSink` مرکزی در Control Plane برای تجمیع بین Tenantها
+  - تطبیق `actual_cost` با صورت‌حساب ارائه‌دهنده
+  - صورت‌حساب‌دهی به مشتری
 
-  بعداً پیاده‌سازی «ارسال به سرویس اندازه‌گیری مرکزی» در Control Plane اضافه می‌شود، که برای جمع بین Tenantها لازم است چون هر Tenant پایگاه داده جدا دارد.
-- **قیمت‌ها:** جدول `Model Price` نسخه‌دار با تاریخ اعتبار. **در کد ثابت نیستند.** `actual_cost` بعداً با صورت‌حساب ارائه‌دهنده تطبیق داده می‌شود.
-- **حداقل لازم از روز اول:** یک **سقف سخت** مصرف روزانه برای هر Tenant و هر ایجنت (قطع‌کننده مدار). یک حلقه معیوب ایجنت می‌تواند در چند ساعت هزینه سنگین بسازد.
+# ۱۷. n8n
 
-# ۱۷. معماری n8n
+- **نقش:** فقط هماهنگی گام‌ها و اجرای Integration (بخش ۷).
+- **جداسازی Tenant:** **یک نمونه n8n برای هر Tenant** (کانتینر جدا با پایگاه داده Postgres مخصوص). دلیل این تصمیم:
+  - نسخه Community در n8n جداسازی چندمستأجری ندارد.
+  - Credentialهای Tenantها نباید کنار هم باشند.
+  - هزینه این مدل در §۲۸ (R5) ثبت شده است.
+- **Credentialها:**
+  - Credential سرویس‌های بیرونی (پیامک و…) در n8n همان Tenant ذخیره می‌شوند.
+  - Karyar فقط **نام** Integration Target را می‌شناسد.
+  - کلید Karyar API و secret مربوط به HMAC جدا برای هر Tenant است.
+- **شبکه:** n8n در شبکه خصوصی است و فقط مسیرهای Webhook از طریق Reverse Proxy در دسترس‌اند.
+- **داده:** pruning داده‌های اجرا فعال است و ذخیره داده اجرای جریان‌های حساس خاموش است.
+- **ساختار:** زیرWorkflow مشترک «Call Karyar» برای احراز هویت، ارسال `case_id` و مدیریت خطا، و یک Error Workflow برای هشدار.
+- **مجوز n8n:** مجوز Sustainable Use پیش از فروش تجاری باید بررسی حقوقی شود. جایگزین‌ها: Activepieces یا Node-RED.
 
-| کجا؟ | چه چیزی؟ |
-|---|---|
-| **ERPNext** | داده و قواعد کسب‌وکار: سند، حسابداری، انبار، اعتبارسنجی‌ها، وضعیت سند، مجوز پایه |
-| **Karyar** | ایجنت‌ها، گردش‌کارهای کسب‌وکار، HITL، رویداد، سیاست، ابزار، API، ممیزی، AI Gateway، و **هر تصمیم یا تراکنش حساس** |
-| **n8n** | اتصال به سرویس‌های ثالث (پیامک، ایمیل مارکتینگ، Google Sheets، CRMهای دیگر)، اعلان‌ها، همگام‌سازی‌های زمان‌بندی‌شده، خروجی داده، چسب‌های کم‌ریسک |
+# ۱۸. معماری RPA (آینده)
 
-**قواعد سخت:**
+- **فقط** برای سیستم‌های بدون API: پورتال‌های دولتی، بانکی، و نرم‌افزارهای قدیمی.
+- **هرگز برای ERPNext.** برای ERPNext همیشه ابزار و API استفاده می‌شود.
+- **اجرا:** یک RPA Worker جدا (Python و Playwright، در کانتینر ایزوله، بدون دسترسی به پایگاه داده). آغاز آن با Karyar به‌صورت یک `Agent Task` به یک Integration Target است. هماهنگی اجرا با n8n است.
+- **CAPTCHA و OTP:**
+  1. Worker اعلام `needs_input` می‌کند.
+  2. Karyar یک **Human Task** گفت‌وگومحور می‌سازد.
+  3. Karyar پاسخ کاربر را به Worker برمی‌گرداند.
+- **اعتبارنامه پورتال‌ها** در فیلد Password سایت Tenant است و فقط برای همان کار و برای مدت کوتاه به Worker داده می‌شود.
+- **شواهد** (اسکرین‌شات و لاگ) به‌صورت فایل خصوصی به Agent Task پیوست می‌شوند.
 
-1. n8n **هرگز** مستقیم در ERPNext نمی‌نویسد. فقط از **Karyar API** و با کاربر یکپارچه‌سازی و توانمندی‌های محدود کار می‌کند.
-2. n8n وضعیت کسب‌وکار نگه نمی‌دارد. اگر چیزی باید یادش بماند، جای آن در Karyar یا ERPNext است.
-3. Karyar از گام `integration_call` با یک callback امضاشده، n8n را صدا می‌زند و پرونده تا رسیدن callback یا timeout منتظر می‌ماند.
-4. **callbackهای حساس (مثل تأیید پرداخت درگاه بانکی) مستقیم به Karyar API می‌آیند**، نه از مسیر n8n.
-5. workflowهای n8n به‌صورت JSON در مخزن `karyar-deploy` نسخه‌داری می‌شوند.
+# ۱۹. معماری چندمستأجری
 
-**چندمستأجری:** n8n نسخه Community چندمستأجری واقعی ندارد. پیشنهاد:
+| مدل | جداسازی | مناسب برای |
+|---|---|---|
+| A. یک Site و چند Company | ضعیف | فقط یک گروه تجاری. **❌ برای کسب‌وکارهای مستقل** |
+| **B. یک Site برای هر Tenant روی Bench مشترک** ✅ | پایگاه داده، کاربر پایگاه داده، پوشه فایل و کلید رمزنگاری جدا. پروسه‌ها و Redis مشترک ولی با فضای نام سایت | **پیش‌فرض** |
+| C. یک Bench یا Stack برای هر Tenant | کامل | مشتریان بزرگ یا حساس (مثلاً پزشکی) |
 
-- یک n8n مشترک برای جریان‌های سکو که پارامتر Tenant می‌گیرند و اعتبارنامه‌ها را از Karyar می‌گیرند.
-- n8n اختصاصی فقط برای مشتریانی که جریان سفارشی دارند.
-
-> **⚠️ مجوز:** n8n مجوز Sustainable Use دارد. اگر مشتریان شما با اعتبارنامه‌های خودشان از n8n (حتی غیرمستقیم) استفاده کنند، احتمالاً مجوز Embed لازم است. قبل از تعهد تجاری بررسی حقوقی شود. جایگزین‌های متن‌باز: Activepieces (MIT در هسته) یا Node-RED (Apache-2.0).
-
-# ۱۸. معماری RPA
-
-<pre class="ltr">
-Workflow step "rpa_job" ──► Karyar RPA Job (doctype: queued)
-                                  ▲            │ pull (HTTPS, Karyar API, worker token)
-                                  │            ▼
-                          result/screenshots   RPA Worker (separate container: Python + Playwright)
-                                  │            │  needs CAPTCHA/OTP?
-                                  │            ▼
-                                  └── Human Task "provide OTP" (conversational) ──► resume job
-</pre>
-
-| اصل | توضیح |
-|---|---|
-| **اول API** | RPA فقط برای سیستم‌هایی است که API ندارند، مثل پورتال بانک، تأمین اجتماعی، سامانه‌های دولتی و نرم‌افزارهای قدیمی |
-| **هرگز روی رابط ERPNext** | برای کار داخل ERPNext همیشه ابزار و API استفاده می‌شود |
-| **سرویس جدا** | Worker در کانتینر ایزوله و بدون دسترسی به پایگاه داده اجرا می‌شود. فقط با Karyar API ارتباط دارد |
-| **مدل Pull** | Worker خودش کار را برمی‌دارد. لازم نیست ورودی شبکه به Worker باز باشد |
-| **اسرار** | اعتبارنامه پورتال در فیلد Password سایت Tenant ذخیره می‌شود و **فقط برای همان Job** و برای مدت کوتاه به Worker داده می‌شود |
-| **انسان در حلقه** | کپچا، OTP و تأیید دستی تبدیل به Human Task می‌شوند. کارمند به‌صورت گفت‌وگویی کد را وارد می‌کند و Job ادامه پیدا می‌کند |
-| **شواهد** | اسکرین‌شات و لاگ هر گام به‌صورت فایل خصوصی پیوست Job می‌شود |
-| **زمان** | فاز ۳ به بعد. **الان لازم نیست** |
-
-# ۱۹. معماری چندمستأجری (Multi-Tenant)
-
-## ۱۹.۱ گزینه‌ها
-
-| مدل | جداسازی | هزینه و عملیات | ارتقا | مناسب برای |
-|---|---|---|---|---|
-| **A. یک Site، چند Company در ERPNext** | ضعیف. با یک خطای User Permission، داده نشت می‌کند. داده پایه مثل Item و Customer مشترک است. سفارشی‌سازی‌ها مشترک‌اند | ارزان‌ترین | با هم | فقط **یک گروه تجاری** با چند شخصیت حقوقی. **❌ برای کسب‌وکارهای مستقل** |
-| **B. یک Site برای هر Tenant روی Bench مشترک** ✅ | پایگاه داده جدا با کاربر جدا، پوشه فایل جدا، کلید رمزنگاری جدا. پروسه‌ها، Workerها و Redis مشترک‌اند (کلیدها با نام سایت جدا می‌شوند) | متوسط. هر Bench می‌تواند ده‌ها سایت داشته باشد | همه سایت‌های یک Bench با هم ارتقا می‌یابند | **پیش‌فرض Karyar**. همان مدلی که Frappe Cloud استفاده می‌کند |
-| **C. یک Bench یا Stack برای هر Tenant** | قوی‌ترین: کانتینر، Worker و حتی سرور پایگاه داده جدا | گران و پرعملیات | مستقل | مشتریان بزرگ، حساس (پزشکی) یا نیازمند نسخه خاص |
-| **D. Row-Level Security در پایگاه داده** | — | — | — | در Frappe و ERPNext **قابل استفاده نیست** |
-
-## ۱۹.۲ پیشنهاد
-
-- **پیش‌فرض: مدل B** با «گروه‌های Bench» (مثلاً `bench-standard-01` و `bench-standard-02`).
-- **برای مشتریان حساس: مدل C.**
-- **مدل A برای کسب‌وکارهای جدا هرگز استفاده نشود.**
-
-**نکات صریح:**
-
-- «جدول جدا» یا حتی «پایگاه داده جدا» به‌تنهایی کافی نیست. در مدل B، کد همه Tenantها در یک پروسه اجرا می‌شود. پس:
-  - (۱) هیچ کد مخصوص یک مشتری بدون بازبینی روی Bench مشترک نصب نمی‌شود.
-  - (۲) **Server Script** و دسترسی Administrator، bench و console به مشتری داده نمی‌شود.
-  - (۳) Workerها و کش Redis همیشه با `frappe.local.site` کار می‌کنند.
-- **همه اجزای بیرون از Frappe باید Tenant-aware باشند.** n8n، RPA، AI Gateway (در صورت جدا شدن) و Channel Gateway (در صورت جدا شدن) هر درخواست را با شناسه سایت و اعتبارنامه همان سایت انجام می‌دهند.
-- **محدودیت مقیاس مدل B:** Scheduler روی همه سایت‌ها می‌چرخد و Workerها مشترک‌اند، پس هر Bench سقفی دارد. مشتری پرمصرف به Bench دیگری منتقل می‌شود (پشتیبان‌گیری و بازیابی سایت).
-- **Control Plane (بعد):** شامل ثبت Tenantها، Bench هر Tenant، Packها، پلن، سقف مصرف و جمع مصرف. می‌تواند یک سایت Frappe جداگانه با اپ `karyar_platform` باشد. Frappe Press (AGPL) را می‌توان بررسی کرد، ولی برای شروع **سنگین** است. اول با اسکریپت راه‌اندازی شود: `new-site`، سپس `install-app`، سپس `apply-pack`.
+- **Tenant = مرز کسب‌وکار یا پروژه.** محدوده‌های داخلی (شعبه، واحد، شرکت زیرمجموعه) با User Permission کنترل می‌شوند.
+- **همه اجزای بیرونی Tenant-aware هستند:** n8n جدا برای هر Tenant، کلیدهای API و HMAC جدا، Integration Target و Credential در محدوده Tenant، و AI Gateway با Model Profile و کلید جدا.
+- **قواعد Bench مشترک:**
+  - به مشتری Server Script، Administrator، bench یا console داده نمی‌شود.
+  - کد اختصاصی یک مشتری بدون بازبینی روی Bench مشترک نصب نمی‌شود.
+- **Control Plane** (ثبت Tenant، راه‌اندازی، تجمیع مصرف): در فاز ۱ با اسکریپت `karyar-deploy`. سیستم کامل در آینده.
 
 # ۲۰. معماری امنیت
 
 | حوزه | تصمیم |
 |---|---|
-| **جداسازی Tenant** | مدل B یا C (بخش ۱۹). هر سایت کلید رمزنگاری خودش را دارد (`encryption_key`) |
-| **احراز هویت انسان** | ورود Frappe همراه با 2FA (موجود در Frappe) برای نقش‌های مالی و مدیریتی. برای کانال‌ها: اتصال حساب کانال به کاربر از راه کد یک‌بارمصرف |
-| **احراز هویت مشتری** | هویت کانال (شناسه تلگرام یا شماره واتس‌اپ). برای دسترسی به داده حساس، تأیید با OTP پیامکی |
-| **احراز هویت ماشین** | API Key/Secret یا OAuth2 برای هر سیستم بیرونی، با چرخش کلید |
-| **مجوز** | بخش ۱۱: زنجیره کامل در کد و ممنوعیت `ignore_permissions` در ابزارها |
-| **اسرار** | فیلدهای Password در Frappe (رمزنگاری با کلید سایت). کلیدهای سکو در متغیر محیطی یا Vault. **هرگز** در prompt، لاگ یا Pack |
-| **ورودی‌های بیرونی** | تأیید امضای HMAC روی همه Webhookها، جلوگیری از replay با timestamp و nonce، محدودیت نرخ |
-| **Prompt Injection** | محتوای مشتری، فایل‌ها و صفحات وب «داده نامطمئن» برچسب می‌خورند. اختیار اقدام فقط از principal و سیاست می‌آید. ابزارهای پرریسک بدون HITL در دسترس گفت‌وگوی مشتری نیستند |
-| **امنیت تأیید** | گره خوردن تأیید به `payload_hash`، احراز هویت تأییدکننده، و تأیید قوی برای عملیات مالی (بخش ۸) |
-| **کمینه‌سازی داده به AI** | Schema خروجی ابزار، طبقه‌بندی داده، و امکان «مدل خودمیزبان» برای داده حساس |
-| **RPA** | ایزوله، بدون دسترسی به پایگاه داده، اعتبارنامه کوتاه‌مدت |
-| **ممیزی** | Audit Log فقط‌افزودنی (بخش ۲۱) |
-| **زنجیره تأمین** | پین کردن نسخه‌ها، mirror داخلی PyPI و npm (به دلیل تحریم)، اسکن وابستگی‌ها |
+| جداسازی Tenant | مدل B یا C. هر سایت کلید رمزنگاری خودش را دارد. n8n و Credentialها جدا برای هر Tenant |
+| احراز هویت انسان | ورود Frappe. 2FA برای نقش‌های مالی و مدیریتی و برای تأیید با سطح `strong` |
+| احراز هویت مشتری | هویت کانال از `Contact Channel`. برای داده حساس، OTP |
+| احراز هویت ماشین | کلید API یا OAuth2 جدا برای هر Tenant و هر سیستم، با چرخش کلید |
+| مجوز | زنجیره بخش ۱۱. ممنوعیت `ignore_permissions` و SQL در ابزارها. **Prompt مجوز یا تأیید نمی‌سازد** |
+| تصمیم و تأیید | فقط از Session کاربر احرازشده و مسئول. گره خوردن به hash. منع تأیید توسط خود. ثبت تلاش‌های غیرمجاز |
+| واگذاری | اشتراک اختیار (جلوگیری از Confused Deputy)، عمق محدود، منع چرخه |
+| Prompt Injection | محتوای مشتری، فایل‌ها و وب «داده نامطمئن» برچسب می‌خورند. Task Brief به‌جای متن خام. ابزارهای پرریسک در گفت‌وگوی مشتری در دسترس نیستند |
+| اسرار | فیلد Password در Frappe (رمزنگاری با کلید سایت). کلیدهای سکو در متغیر محیطی یا Vault. **هرگز** در Prompt، لاگ، Pack یا git |
+| ورودی‌های بیرونی | HMAC، جلوگیری از replay با timestamp و nonce، و محدودیت نرخ |
+| پیام‌رسانی | رعایت رضایت و انصراف (`Contact Channel`)، قواعد هر کانال، و قواعد پیامک تبلیغاتی |
+| داده به AI | Schema خروجی ابزار، طبقه‌بندی داده، و گزینه مدل خودمیزبان برای داده حساس |
+| RPA | ایزوله، بدون دسترسی به پایگاه داده، اعتبارنامه کوتاه‌مدت |
+| زنجیره تأمین | پین نسخه‌ها، mirror داخلی PyPI و npm، اسکن وابستگی‌ها |
 
-# ۲۱. معماری ممیزی و مشاهده‌پذیری
-
-## ۲۱.۱ سه لایه ردیابی
+# ۲۱. ممیزی، نسخه‌داری و مشاهده‌پذیری
 
 | لایه | محتوا | ابزار |
 |---|---|---|
-| **تغییرات داده** | چه فیلدی در کدام سند تغییر کرد | `Version` در Frappe (track changes) — موجود |
-| **ممیزی معنایی** | چه کسی (انسان، ایجنت، سیستم یا مشتری)، از طرف چه کسی، کدام توانمندی یا ابزار، ورودی (خلاصه یا hash)، پیشنهاد در برابر اجرای واقعی، تأییدکننده، سند اثرپذیرفته، پرونده و گام، نتیجه و خطا | DocType جدید `Karyar Audit Log` |
-| **ردیابی فنی** | زمان‌ها، retryها، مصرف AI، خطاها | Step Run، AI Usage، Error Log و RQ Job، با `correlation_id` مشترک |
+| تغییرات میدانی اسناد ERPNext | چه فیلدی در کدام سند تغییر کرد | **`Version` استاندارد Frappe** |
+| ممیزی معنایی Karyar | چه کسی (انسان، ایجنت، مشتری، سیستم یا Policy)، از طرف چه کسی، چه درخواستی، برداشت ایجنت، پیشنهاد (قبل و بعد)، تأیید (چه کسی، کِی، چطور)، اجرای واقعی، سند اثرپذیرفته، Case، Task، Workflow، نسخه داده، خطا | `Karyar Audit Log` (فقط‌افزودنی) |
+| نسخه‌های پیش‌ثبت | شماره نسخه، Diff، hash قبل و بعد، منبع | `draft.revised` در Audit Log |
+| فنی | زمان‌ها، retryها، مصرف AI، خطاها | AI Usage Log، Error Log، RQ Job، شناسه execution در n8n |
 
-- **فقط‌افزودنی:** هیچ نقشی، حتی System Manager، اجازه ویرایش یا حذف Audit Log را ندارد. این در کنترلر اعمال می‌شود.
-- **محدودیت صریح:** مدیر پایگاه داده همچنان می‌تواند با SQL تغییر دهد. برای عملیات حساس در فاز بعد، **زنجیره hash** (هر ردیف hash ردیف قبل را دارد) برای تشخیص دستکاری اضافه می‌شود.
-- **ذخیره prompt و پاسخ مدل:** با سطح‌های قابل تنظیم `off`، `summary` و `full`، به‌علاوه سیاست نگهداری. این توازنی بین عیب‌یابی و حریم خصوصی است.
+**انواع رویداد ممیزی:**
 
-## ۲۱.۲ مشاهده‌پذیری
+- `change.requested`، `interpreted`، `proposed`، `confirmed`، `rejected`، `applied`
+- `approval.requested`، `granted`، `denied`، `completed`، `invalidated`
+- `delegation.created`، `completed`، `denied_by_policy`
+- `task.created`، `claimed`، `assigned`، `decided`
+- `case.paused`، `resumed`، `cancelled`
+- `promote.succeeded`، `promote.blocked`
+- `auto_execution.by_policy`، همراه با نسخه Policy و تعریف‌کننده
+- `security.out_of_scope_request`، `security.approval_missing`، `security.unauthorized_decision_attempt`
 
-**الان:**
+**یکپارچگی و نگهداری:**
 
-- `correlation_id` در همه لاگ‌ها
-- لاگ ساخت‌یافته JSON
-- یک داشبورد ساده در Workspace: پرونده‌های گیرکرده، کارهای انسانی معوق، خطاها، صف‌ها، و مصرف AI امروز
+- هیچ نقشی، حتی System Manager، نمی‌تواند Audit Log را ویرایش یا حذف کند.
+- برای عملیات حساس، **زنجیره hash** در آینده اضافه می‌شود.
+- ذخیره Prompt و پاسخ مدل با سطح قابل تنظیم است: `off`، `summary` یا `full`.
 
-**بعد:**
+**مشاهده‌پذیری:**
 
-- OpenTelemetry برای trace بین Frappe، Worker، n8n و RPA
-- Prometheus و Grafana برای متریک‌ها
-- Sentry یا GlitchTip برای خطاها
-- هشدارها
+- **فاز ۱:** `correlation_id` در همه لاگ‌ها، لاگ ساخت‌یافته JSON، و داشبورد Workspace شامل پرونده‌های بی‌حرکت، کارهای معوق، Approvalهای ناقص، خطاها و مصرف AI.
+- **آینده:** OpenTelemetry، Prometheus و Grafana، و Sentry.
 
-# ۲۲. جریان داده
+# ۲۲. جریان و مالکیت داده
+
+| دسته | چه چیزی | کجا | عمر |
+|---|---|---|---|
+| **پیش‌ثبت** (Draft / Pre-Registration) | داده ناقص، پیش‌نویس، تغییرات پیشنهادی (فقط دلتا) | `Karyar Case.draft_data` و نسخه‌های آن | تا Promote یا رها شدن |
+| **Context تعامل** | پیام‌ها و خلاصه‌ها | `Conversation` و `Message` در Karyar. **خلاصه نهایی در Timeline ‏ERPNext** (`Communication`) | طبق سیاست نگهداری |
+| **فرایند و ممیزی** | مرحله پرونده، ارجاع به اسناد ERPNext، Proposalها، Approvalها، Agent Taskها، ممیزی و مصرف AI | Karyar | دائمی |
+| **داده نهایی کسب‌وکار** | Lead، Customer، Contact (و `Contact Channel`)، سفارش، فاکتور، اسناد حسابداری و انبار، Campaign | **ERPNext** | دائمی (Final Truth) |
 
 <pre class="ltr">
-[Customer msg] → Channel Gateway → Conversation(+Message) → event channel.message.received
-   → Workflow Engine: find/create Run → agent_task(Ava, responsibility=intake)
-      → Ava: tools (validate_phone, validate_national_id, …) → Run.context.intake (draft, NOT ERP yet)
-      → customer confirmation (hash h1) → human_task(review) → decision approve(h2)
-      → erp_action: crm.lead.create (idempotent) → ERPNext Lead (SOURCE OF TRUTH)
-         → doc_event → Karyar Event erp.lead.created (outbox)
-            → trigger workflow "sales_followup" → agent_task(responsibility=sales → Hanna)
+conversation → Karyar draft (revisions) → [customer confirmation?] → [Approval Request?] → Promote → ERPNext (final)
+      ↑ change proposals (confirmed)                    (configurable per workflow)              │
+      └────────────────────────────────────────────────────────────────────────────────────────── │
+                            Karyar Case keeps only: refs (doctype/name) + approved snapshot (audit-only)
 </pre>
 
-**مرز داده:**
+**قواعد:**
 
-- Karyar فقط **وضعیت فرایند** را نگه می‌دارد: گفت‌وگو، context پرونده، پیش‌نویس‌های قبل از تأیید، تصمیم‌ها و ممیزی.
-- بعد از تأیید، **حقیقت کسب‌وکار** وارد ERPNext می‌شود و Karyar فقط به آن ارجاع می‌دهد.
-- اگر کسی Lead را مستقیم در ERPNext تغییر دهد، ERPNext معتبر است. ایجنت‌ها همیشه داده تازه را از ERPNext می‌خوانند، **نه از context کهنه پرونده**.
+1. پیش‌ثبت فقط **دلتا** و ارجاع نگه می‌دارد. کپی از داده پایه ERPNext ممنوع است.
+2. **پس از Promote**، ایجنت داده را فقط از ERPNext می‌خواند. پیش‌ثبتِ قفل‌شده و snapshot در دسترس ابزارهای ایجنت نیستند.
+3. **خلاصه گفت‌وگو** قصد، ترجیحات، سؤال‌های باز و قول‌های داده‌شده را نگه می‌دارد. واقعیت‌های کسب‌وکاری در خلاصه با برچسب «طبق گفته مشتری در تاریخ X» ثبت می‌شوند و منبع معتبر نیستند.
+4. **پیش‌ثبت رهاشده:** پس از مدت نگهداری Workflow (پیش‌فرض ۳۰ روز، قابل تنظیم)، پرونده با وضعیت `abandoned` بسته و داده شخصی پاک می‌شود. اگر گزینه «Lead ناقص» برای آن Workflow روشن باشد، قبل از پاک‌سازی Lead ناقص ساخته می‌شود (این گزینه پیش‌فرض خاموش است و تحت Policy قرار دارد).
+5. **n8n هیچ‌وقت پیش‌ثبت نگه نمی‌دارد.**
 
-# ۲۳. ساختار مخزن‌ها
-
-## ۲۳.۱ تعارض فعلی
-
-مخزن `karyar-mainERP` خودِ ERPNext است و روی `develop` قرار دارد. اگر Karyar داخل آن نوشته شود:
-
-- (۱) عملاً هسته تغییر کرده است.
-- (۲) هر ادغام با upstream تعارض می‌دهد.
-- (۳) bench اپ‌ها را **یک مخزن برای هر اپ** نصب می‌کند.
-
-## ۲۳.۲ پیشنهاد: چند مخزن (Polyrepo) و یک مخزن استقرار
+# ۲۳. ساختار مخازن و اپ
 
 | مخزن | محتوا | فاز |
 |---|---|---|
-| `karyar-mainERP` (همین) | fork ERPNext، **با پایه `version-16`** (شاخه `karyar/version-16`). فقط وصله‌های اجتناب‌ناپذیر، همراه با فهرست `PATCHES.md` و تلاش برای ارسال به upstream | ۰ |
-| `karyar` | اپ اصلی سکو (ساختار پایین) | ۱ |
-| `karyar_iran` | بومی‌سازی ایران و مودیان | ۲ |
-| `karyar_hr_ir` | حقوق، بیمه و مالیات حقوق ایران (روی HRMS) | ۳ به بعد |
-| `karyar-deploy` | `apps.json` با نسخه‌های پین‌شده، Dockerfile و compose (بعدها Helm)، اسکریپت راه‌اندازی Tenant، workflowهای n8n، Packها، runbookها | ۰ تا ۱ |
-| `karyar-rpa-worker` | سرویس RPA | ۳ به بعد |
-| `karyar-packs` (اختیاری) | اگر Packها زیاد شدند، به‌صورت اپ یا مخزن جدا | بعد |
-
-**چرا اپ `karyar` یکی است، نه چند اپ از روز اول؟**
-
-- جدا کردن اپ‌ها هزینه نسخه‌داری و وابستگی دارد.
-- مرز را با **ماژول‌ها و پکیج‌های Python** و قاعده import می‌کشیم.
-- **ریسک:** انتقال DocType بین اپ‌ها در آینده دردسر دارد. پس مرزهای ماژول باید از اول تمیز باشند.
+| `karyar-mainERP` (همین) | fork ERPNext **با پایه `version-16`** و فقط برای وصله‌های اجتناب‌ناپذیر (`PATCHES.md`). مستندات موقتاً در `docs/karyar/` | ۰ |
+| `karyar` | اپ اصلی | ۱ |
+| `karyar_iran` | بومی‌سازی ایران | ۱ (مبانی) و ۲ |
+| `karyar_hr_ir` | حقوق و بیمه ایران روی HRMS | آینده |
+| `karyar-deploy` | `apps.json` پین‌شده، Docker و compose، اسکریپت راه‌اندازی Tenant (سایت، اپ‌ها، Pack، n8n)، Workflowهای n8n، Packها، runbookها | ۰ تا ۱ |
+| `karyar-rpa-worker` | RPA | آینده |
 
 <pre class="ltr">
-karyar/                              (Frappe app repo)
-├── pyproject.toml
-└── karyar/
-    ├── hooks.py                     # doc_events, scheduler, extension-point hook names, fixtures
-    ├── modules.txt                  # Karyar Agents, Karyar Workflow, Karyar Conversations,
-    │                                # Karyar Events, Karyar Integrations, Karyar Audit, Karyar AI
-    ├── core/                        # framework-light domain logic (unit-testable)
-    │   ├── workflow/  (graph model, executor, step types registry)
-    │   ├── policy/    (permission chain, risk gates)
-    │   ├── tools/     (registry, executor, contracts)
-    │   ├── agents/    (runtime loop, context builder)
-    │   ├── ai/        (gateway, provider adapters, usage sink)
-    │   └── events/    (envelope, outbox, dispatcher)
-    ├── karyar_agents/doctype/       # Karyar Agent, Responsibility, Capability, Role Assignment,
-    │                                # Prompt Template, Model Profile
-    ├── karyar_workflow/doctype/     # Workflow Definition, Workflow Run, Step Run, Human Task, Timer
-    ├── karyar_conversations/doctype/# Conversation, Message, Channel Account, Contact Identity
-    ├── karyar_events/doctype/       # Karyar Event, Event Source, Event Subscription
-    ├── karyar_integrations/doctype/ # Integration Endpoint, RPA Job
-    ├── karyar_audit/doctype/        # Audit Log, AI Usage, Model Price
-    ├── tools/                       # built-in tool packs: crm, selling, accounts, stock, reports, task
-    ├── channels/                    # adapters: web widget, telegram, (bale via karyar_iran)
-    ├── api/v1/                      # stable REST facade
-    ├── mcp.py                       # (later) frappe-mcp exposure of the same tools
-    ├── packs/                       # base packs (fixtures/JSON)
-    ├── workspace/                   # Karyar Workspace SPA (React + frappe-react-sdk, like erpnext/banking)
-    ├── commands/                    # bench karyar apply-pack, etc.
-    ├── patches/ , patches.txt
-    ├── locale/fa.po
-    └── tests/                       # unit + integration (against ERPNext) + tool contract tests
+karyar/karyar/
+├── hooks.py              doc_events, scheduler, fixtures, dashboards, extension-point hooks
+├── core/                 framework-light logic: policy, tools, agents, ai, promote, approvals, delegation
+├── karyar_agents/        Karyar Agent, Responsibility, Capability, Role Assignment, Prompt Template, Model Profile
+├── karyar_cases/         Karyar Case, Human Task, Human Task Template, Approval Request, Agent Task
+├── karyar_conversations/ Conversation, Message, Channel Account
+├── karyar_audit/         Karyar Audit Log, AI Usage Log, Model Price
+├── karyar_settings/      Karyar Settings (+ policy tables: approval, auto-execution, delegation,
+│                         retention, integration targets)
+├── fixtures/             Custom Field: Contact Channel (child of Contact), idempotency/karyar_case fields
+├── tools/ channels/ api/v1/ packs/ workspace/ (SPA) commands/ locale/fa.po tests/
 </pre>
 
-**الگوی موجود:** ERPNext خودش یک SPA با React برای بانکداری دارد که با `frappe-react-sdk` در `/banking` سرو می‌شود. Karyar Workspace می‌تواند دقیقاً همین الگو را دنبال کند، یعنی بدون سرور جداگانه فرانت‌اند. گزینه دیگر **frappe-ui** (Vue) است که اپ‌های CRM و Helpdesk استفاده می‌کنند. **(تصمیم لازم است.)**
+- **حذف‌شده نسبت به نسخه ۰٫۱:** `Contact Identity`، و ماژول‌های Workflow Engine و Event (`Workflow Definition`، `Workflow Run`، `Step Run`، `Timer`، `Karyar Event`).
+- **DocTypeهای Karyar:** Agent، Responsibility، Capability، Role Assignment، Prompt Template، Model Profile، Case، Human Task، Human Task Template، Approval Request، Agent Task، Conversation، Message، Channel Account، Audit Log، AI Usage Log، Model Price، Settings.
 
 # ۲۴. معماری استقرار
 
-**فاز ۱ (یک سرور یا Docker Compose، بر پایه `frappe_docker`):**
+**فاز ۱** (برای هر محیط؛ مبتنی بر `frappe_docker`):
 
 <pre class="ltr">
 nginx (TLS, per-tenant hostnames)
- ├─ frappe-web (gunicorn)        ├─ socketio (realtime)
- ├─ workers: short, default, long, karyar_events, karyar_agent (concurrency-limited)
+ ├─ frappe-web (gunicorn) · socketio
+ ├─ workers: short, default, long, karyar_agent (concurrency-limited)
  ├─ scheduler
- ├─ MariaDB (one DB per site)    ├─ redis-cache   ├─ redis-queue
- ├─ n8n (+ its own Postgres)     [phase 2]
- └─ backups → S3-compatible object storage (encrypted)
+ ├─ MariaDB (one DB per site) · redis-cache · redis-queue
+ ├─ n8n per tenant (+ its Postgres), private network, webhooks via reverse proxy
+ └─ encrypted backups → S3-compatible storage
 </pre>
 
-**فاز ۲ و بعد:**
-
-- چند Bench، Kubernetes (Helm chart رسمی Frappe وجود دارد)
-- MariaDB با replica
-- RPA Workerها
-- (در صورت نیاز) سرویس جدای Channel Gateway و AI Gateway (LiteLLM)
-
-**⚠️ تصمیم محل میزبانی** (بزرگ‌ترین تصمیم زیرساختی):
-
-| گزینه | مزیت | عیب |
-|---|---|---|
-| داخل ایران | اقامت داده، دسترسی مشتریان، مودیان و بانک‌ها | دسترسی به ارائه‌دهندگان AI بین‌المللی و APIهای تلگرام و Meta محدود است |
-| خارج از ایران | دسترسی به AI و کانال‌های بین‌المللی | ریسک حقوقی و اقامت داده، و دسترسی سامانه‌های داخلی |
-| **ترکیبی** (پیشنهاد اولیه) | ERP و داده در ایران. یک «Egress Gateway» کم‌حجم بیرون، فقط برای AI و کانال‌های بین‌المللی، همراه با کمینه‌سازی داده | پیچیدگی بیشتر و نیاز به بررسی حقوقی |
+- **آینده:** چند Bench، Kubernetes، replica برای MariaDB، RPA Worker، و در صورت نیاز سرویس جدای Channel Gateway و LiteLLM.
+- **محل میزبانی** (داخل ایران، خارج، یا ترکیبی) تصمیم باز است (§۲۹).
 
 # ۲۵. راهبرد مقیاس‌پذیری
 
-- **گلوگاه اصلی** تأخیر و نرخ API مدل است، نه پایگاه داده. پس:
-  - صف جدا برای ایجنت‌ها
-  - **سقف همزمانی برای هر Tenant** (عدالت بین Tenantها)
-  - پخش پاسخ (streaming)
-  - کش پاسخ ابزارهای خواندنی پرتکرار برای مدت کوتاه
-- **افقی:** Worker و gunicorn بیشتر. Workerهای `karyar_agent` مستقل از Workerهای ERPNext مقیاس می‌گیرند.
-- **عمودی پایگاه داده:** MariaDB قوی‌تر، replica برای گزارش‌ها، و Prepared Report.
-- **بین Tenantها:** انتقال Tenant پرمصرف به Bench جدید و سقف تعداد سایت در هر Bench.
-- **رویداد:** Outbox و RQ تا هزاران رویداد در دقیقه برای هر Bench کافی است. بعد از آن Relay به Streams یا NATS.
-- **قبل از استخراج سرویس:** ابتدا اندازه‌گیری و پروفایل‌گیری. سرویس جدا فقط وقتی ساخته می‌شود که داده نشان دهد لازم است.
+- **گلوگاه اصلی** تأخیر و نرخ API مدل است. راه‌ها:
+  - صف `karyar_agent` جدا
+  - سقف همزمانی برای هر Tenant
+  - پخش زنده پاسخ
+  - کش کوتاه‌مدت برای ابزارهای خواندنی
+- **افقی:** Worker و gunicorn بیشتر. Workerهای ایجنت مستقل مقیاس می‌گیرند.
+- **پایگاه داده:** Prepared Report، replica برای گزارش، و انتقال Tenant پرمصرف به Bench جدید.
+- **n8n جدا برای هر Tenant** به‌صورت طبیعی افقی است. هزینه آن در §۲۸.
+- **سرویس جدا** فقط وقتی ساخته می‌شود که اندازه‌گیری نشان دهد لازم است.
 
 # ۲۶. راهبرد ارتقا
 
-1. **ERPNext و Frappe دست‌نخورده یا تقریباً دست‌نخورده**، با نسخه‌های پین‌شده در `apps.json`. ارتقاهای minor نسخه v16 به‌صورت ماهانه انجام می‌شوند: اول staging، بعد production.
-2. **آزمون قرارداد ابزارها (Tool Contract Tests):** هر ابزار روی نسخه هدف ERPNext تست می‌شود. شکست در این تست‌ها یعنی ارتقا متوقف می‌شود.
-3. **Karyar API v1** مصرف‌کننده‌ها را از تغییر نام‌ها در ERPNext محافظت می‌کند.
-4. **نسخه‌داری** تعریف گردش‌کار، Pack و دستورالعمل‌ها. پرونده‌های در جریان روی نسخه خود باقی می‌مانند.
-5. **ارتقای اصلی (v16 به v17):** حدود ۶ ماه بعد از انتشار پایدار v17، با شاخه آزمایشی و اجرای کل تست‌ها. احتمالاً همزمان فرصت ارزیابی PostgreSQL هم پیش می‌آید.
-6. **بدون Monkey-patch.** درس از اپ‌های جامعه ایرانی: وصله‌های زمان اجرا بزرگ‌ترین مانع ارتقا هستند.
+1. ERPNext و Frappe دست‌نخورده، با نسخه پین‌شده. ارتقای minor ماهانه: اول staging، بعد production.
+2. **آزمون قرارداد ابزارها و Promote** روی نسخه هدف ERPNext. شکست در این آزمون یعنی توقف ارتقا.
+3. **Karyar API v1** مصرف‌کننده‌ها (n8n و Workspace) را از تغییرات ERPNext محافظت می‌کند.
+4. **نسخه‌داری:** Policyها، Templateها، Packها، دستورالعمل‌ها، و Workflowهای n8n (export در git).
+5. **ارتقای v16 به v17:** حدود ۶ ماه پس از انتشار پایدار v17. فرصت ارزیابی PostgreSQL.
+6. **بدون Monkey-patch.**
 
-# ۲۷. معماری بومی‌سازی ایران
+# ۲۷. بومی‌سازی ایران (`karyar_iran`)
 
-**اپ `karyar_iran`** (بدون هیچ وابستگی از سمت هسته `karyar` به آن):
-
-| بخش | طراحی | فاز |
+| بخش | طراحی (روی قابلیت‌های استاندارد ERPNext) | فاز |
 |---|---|---|
-| زبان و RTL | ترجمه Frappe (۹۶٪) و ERPNext (۸۱٪) موجود است. تکمیل ترجمه‌های Karyar در `fa.po` | ۱ |
-| نرمال‌سازی متن | ارقام فارسی و عربی به لاتین، «ي/ك» به «ی/ک»، نیم‌فاصله، شماره موبایل (`+98`/`09`). به‌صورت **ابزار قطعی** که ایجنت‌ها و جست‌وجو استفاده می‌کنند | ۱ |
-| اعتبارسنج‌ها | کد ملی، شناسه ملی، کد اقتصادی، شبا (چک‌سام)، کد پستی. به‌صورت ابزار برای اعتبارسنجی Ava | ۱ |
-| تاریخ جلالی | ذخیره میلادی و نمایش جلالی (datepicker، formatter، فیلتر Jinja). **تفسیر تاریخ‌های زبان طبیعی** مثل «پنجشنبه هفته بعد» یا «۱۵ مهر» با یک ابزار قطعی `parse_persian_date`، نه حدس مدل. شماره‌گذاری اسناد با `naming_series_variables` | ۱ تا ۲ |
-| کانال‌های ایرانی | آداپتور بله (API شبیه تلگرام)، و در صورت نیاز ایتا یا روبیکا، از راه `karyar_channel_adapters` | ۲ |
-| حسابداری | چارت حساب ایرانی با `create_charts(custom_chart=…)`. سطح «تفصیلی» با Party و Accounting Dimension. ریال با دقت صفر | ۲ |
-| مالیات | ارزش افزوده قابل‌پیکربندی (نه ثابت در کد)، کالاهای معاف، کسر از قرارداد (Tax Withholding Category) | ۲ |
-| مودیان | ماژول جدا با کلاینت مستقل، صف ارسال، استعلام وضعیت، و HITL برای خطاها | ۳ |
-| اسناد فارسی | قالب‌های چاپ RTL فاکتور، پیش‌فاکتور و رسید | ۲ |
-| حقوق و بیمه | اپ `karyar_hr_ir` روی HRMS | ۳ به بعد |
-
-**بین‌المللی‌سازی بیش از حد ممنوع است.** فقط دو کار از الان انجام می‌شود:
-
-1. هسته `karyar` به ایران وابسته نباشد.
-2. متن‌ها قابل ترجمه باشند.
-
-چیزهایی مثل چندارزی پیچیده یا قواعد مالیاتی چندکشوری الان طراحی نمی‌شوند.
+| زبان و RTL | ترجمه موجود Frappe (۹۶٪) و ERPNext (۸۱٪). تکمیل `fa.po` | ۱ |
+| نرمال‌سازی | ارقام فارسی و عربی، «ی/ک»، نیم‌فاصله، شماره موبایل. **ابزار قطعی** | ۱ |
+| اعتبارسنج‌ها | کد ملی، شناسه ملی، کد اقتصادی، شبا، کد پستی | ۱ |
+| تاریخ جلالی | ذخیره میلادی و نمایش جلالی. `parse_persian_date` قطعی. `naming_series_variables` | ۱ تا ۲ |
+| کانال‌های ایرانی | Adapterهای بله و ایتا، و ردیف آن‌ها در `Contact Channel` | ۱ تا ۲ |
+| پیامک | SMS Settings برای پیامک تراکنشی. پیامک انبوه با Integration Target در n8n. رعایت قواعد خطوط تبلیغاتی و انصراف | ۱ تا ۲ |
+| حسابداری | چارت حساب با `create_charts(custom_chart=…)`. سطح تفصیلی با Party و Accounting Dimension. دقت ریال برابر صفر | ۲ |
+| مالیات | Tax Template و Tax Withholding Category، با نرخ قابل‌پیکربندی | ۲ |
+| مودیان | ماژول جدا: صف ارسال، استعلام، HITL برای خطا | آینده |
+| اسناد فارسی | Print Formatهای RTL | ۲ |
+| حقوق و بیمه | `karyar_hr_ir` روی HRMS | آینده |
 
 # ۲۸. ریسک‌ها و توازن‌ها
 
 | # | ریسک | شدت | کاهش |
 |---|---|---|---|
-| R1 | دسترسی به ارائه‌دهندگان AI از ایران، و حقوقی بودن ارسال داده به خارج | **بالا** | AI Gateway چندارائه‌دهنده‌ای، مدل خودمیزبان، طبقه‌بندی داده، بررسی حقوقی |
-| R2 | کانال‌های تلگرام، واتس‌اپ و اینستاگرام در ایران فیلتر هستند و API رسمی Meta برای کسب‌وکار ایرانی در دسترس نیست | **بالا** | شروع با ویجت وب و بله. Channel Gateway جداشده تا کانال جایگزین شود |
-| R3 | ساختن موتور گردش‌کار، کار سختی است و می‌تواند دامنه پروژه را منفجر کند | **بالا** | مجموعه گام‌های حداقلی، تست‌های جدی، جدا کردن تعریف از اجراکننده (مسیر فرار به Temporal) |
-| R4 | برداشت اشتباه مدل در تأیید گفت‌وگومحور | بالا | تصمیم ساخت‌یافته، تأیید صریح بر اساس ریسک، `payload_hash` |
-| R5 | Prompt Injection از پیام مشتری یا فایل | بالا | مجوز مستقل از مدل، داده نامطمئن، Task Brief به‌جای متن خام |
-| R6 | خلأ مجوز در گزارش‌های SQL خام ERPNext | متوسط | فقط Report Catalog بازبینی‌شده |
-| R7 | هزینه AI از کنترل خارج شود (حلقه ایجنت) | متوسط | سقف سخت از روز اول و محدودیت گام در هر نوبت |
-| R8 | پیکربندی بیش از حد، محصول را برای مشتری پیچیده کند | متوسط | Packهای آماده با پیش‌فرض‌های معقول. سازنده گرافیکی بعداً |
-| R9 | ارتقای ERPNext ابزارها را بشکند | متوسط | آزمون قرارداد، API facade، پین نسخه |
-| R10 | مجوزها: GPL و AGPL برای توزیع، و SUL برای n8n | متوسط | تصمیم مجوز Karyar و بررسی حقوقی |
-| R11 | داده حساس پزشکی (مثال کلینیک) | بالا (برای آن بخش بازار) | مدل C برای Tenant، مدل خودمیزبان، پوشاندن فیلدها |
-| R12 | تخصص کم تیم در Frappe | متوسط | شروع کوچک، الگوبرداری از کد ERPNext، آموزش |
+| R1 | دسترسی و قانونی بودن ارائه‌دهندگان AI از ایران | بالا | AI Gateway، مدل خودمیزبان، طبقه‌بندی داده، بررسی حقوقی |
+| R2 | محدودیت کانال‌ها: فیلتر شدن؛ API ‏Meta برای کسب‌وکار ایرانی؛ قالب پیام و رضایت در WhatsApp؛ پنجره پاسخ Instagram؛ ربات Telegram و بله فقط برای کاربرانی که ربات را آغاز کرده‌اند | بالا | شروع با وب و بله. اعلام محدودیت‌ها در هر Integration Target. داده رضایت در `Contact Channel` |
+| R3 | منطق ترتیبی در n8n سخت‌تر تست و بازبینی می‌شود | متوسط | export به git، README، منطق در Karyar، n8n جدا برای test |
+| R4 | رویداد گم‌شده (Webhook در Frappe retry خودکار ندارد) | متوسط | لاگ شکست، جست‌وجوی پرونده‌های بی‌حرکت، و در آینده Outbox |
+| R5 | هزینه عملیاتی **n8n جدا برای هر Tenant** | متوسط | کانتینر سبک. ارزیابی دوباره پس از چند مشتری (n8n Enterprise، یا موتور داخلی) |
+| R6 | برداشت اشتباه ایجنت در دستورهای گفت‌وگومحور | بالا | Change Proposal با Diff و تأیید صریح؛ hash |
+| R7 | خستگی کاربر از تأییدهای زیاد | متوسط | دسته‌بندی تغییرها در یک Proposal. تعریف دقیق «تغییر حساس». ذخیره فرم به‌عنوان تأیید |
+| R8 | زنجیره واگذاری و افزایش اختیار | بالا | اشتراک اختیار، عمق محدود، Delegation Policy، ممیزی |
+| R9 | پیچیدگی Workspace (گفت‌وگو، پنل، Approval، واگذاری) | متوسط | پیاده‌سازی تدریجی، و شروع با یک فرایند پایلوت |
+| R10 | پیش‌نمایش بدون ذخیره در ERPNext (تابع داخلی) | متوسط | spike در فاز ۱؛ راه جایگزین savepoint و rollback |
+| R11 | Prompt Injection | بالا | مجوز مستقل از مدل؛ داده نامطمئن؛ Task Brief |
+| R12 | هزینه AI از کنترل خارج شود | متوسط | سقف سخت و محدودیت گام |
+| R13 | مجوزها: GPL و AGPL، و SUL در n8n | متوسط | بررسی حقوقی |
+| R14 | داده پزشکی و حساس | بالا | مدل C برای Tenant، مدل خودمیزبان، پوشاندن فیلدها |
+| R15 | ارتقای ERPNext ابزارها یا Promote را بشکند | متوسط | آزمون قرارداد، پین نسخه |
 
-# ۲۹. تصمیم‌هایی که نیاز به تأیید دارند
+# ۲۹. تصمیم‌های باز (کسب‌وکاری و زیرساختی؛ مانع معماری نیستند)
 
-1. **پایه:** ERPNext و Frappe v16 به‌جای develop، و جابه‌جایی fork به `version-16`.
-2. **ساختار مخازن:** چند مخزن (`karyar`، `karyar_iran`، `karyar-deploy`).
-3. **چندمستأجری:** مدل B به‌عنوان پیش‌فرض و C برای حساس‌ها.
-4. **محل میزبانی** و سیاست ارسال داده به ارائه‌دهندگان AI.
-5. **ارائه‌دهندگان AI مجاز** و مدل تجاری: کلید سکو یا BYOK.
-6. **اولین مشتری و صنعت پایلوت** (کلینیک؟ پخش؟). این تعیین می‌کند اولین Pack چه باشد.
-7. **کانال‌های نسخه اول** (پیشنهاد: ویجت وب و بله و/یا تلگرام).
-8. **فناوری Karyar Workspace:** React (الگوی banking) یا frappe-ui (Vue).
-9. **نام‌گذاری:** `Responsibility` و «نقش کاری» به‌جای Role.
-10. **سطح پیش‌فرض تأیید** برای عملیات مالی (`confirm` یا `strong`).
-11. **مجوز Karyar** (GPLv3 متن‌باز یا فقط SaaS) و ادامه با n8n یا جایگزین.
-12. **زبان کد و مستندات** (پیشنهاد: کد و شناسه‌ها انگلیسی، مستندات کاربر فارسی).
+1. **پایه نسخه:** پیشنهاد ERPNext و Frappe v16 به‌جای develop، با MariaDB.
+2. **محل میزبانی** و سیاست ارسال داده به ارائه‌دهندگان AI.
+3. **ارائه‌دهندگان AI مجاز** و مدل تجاری (کلید سکو یا BYOK).
+4. **صنعت و مشتری پایلوت** (تعیین‌کننده اولین Pack).
+5. **کانال‌های نسخه اول** (پیشنهاد: ویجت وب و بله).
+6. **فناوری Workspace:** React (الگوی banking) یا frappe-ui.
+7. **مجوز Karyar** و ادامه با n8n یا جایگزین آن (SUL).
+8. **سیاست داده پزشکی** (در صورت پایلوت کلینیک).
+9. **دسترسی کارکنان مشتری به Desk:** کدام نقش‌ها.
 
-# ۳۰. اجزایی که عمداً برای فازهای بعد منعطف مانده‌اند
+# ۳۰. اجزای موکول‌شده به آینده
 
-| جزء | الان | جای خالی در معماری |
-|---|---|---|
-| سازنده گرافیکی گردش‌کار و ایجنت | JSON و فرم Desk | Schema گراف نسخه‌دار. UI فقط یک ویرایشگر روی همین Schema است |
-| حافظه بلندمدت ایجنت | ندارد | `context builder` قابل افزودن منبع، مثل Memory Store یا RAG روی اسناد |
-| مدیریت هزینه و صورت‌حساب | فقط UsageRecord و سقف سخت | `UsageSink`، `Model Price` و Control Plane |
-| اعلان چندکاناله | `notify` ساده | Notification Router با ترجیحات کاربر |
-| صف پیشرفته و اولویت | صف‌های RQ | Relay رویداد و صف‌های اولویت‌دار |
-| صوت | ندارد | Adapter کانال صوتی (STT/TTS) پشت Channel Gateway |
-| MCP | ندارد | نمایش همان رجیستری ابزار با `frappe-mcp` |
-| مشاوره ایجنت با ایجنت | ندارد | ابزار `consult` |
-| تأیید موازی «M از N»، escalation و timeout | پایه | انواع گام `parallel`، `join` و `escalate` |
-| RPA، مودیان، حقوق ایران | ندارد | انواع گام، `karyar_iran` و `karyar_hr_ir` |
-| Observability کامل | لاگ و داشبورد ساده | OpenTelemetry |
-| PostgreSQL | MariaDB | کد مستقل از نوع پایگاه داده و ابزار بررسی `postgres_compat` در CI |
-| اجراکننده Temporal | موتور داخلی | جدایی تعریف از اجراکننده |
+| جزء | جای خالی در معماری فعلی |
+|---|---|
+| Workflow Engine داخلی و Automation Gateway (جایگزین n8n) | منطق، وضعیت و مجوز در Karyar است. READMEهای Workflowها. فهرست Integration Target |
+| Outbox و Event Bus اختصاصی | `emit_event` و پوشش استاندارد رویداد |
+| مهلت، escalation و جانشین تأییدکننده | `Approval Request` و Template |
+| انجام Human Task از پیام‌رسان برای کارکنان | Channel Gateway |
+| سازنده گرافیکی ایجنت، Policy و Template | DocTypeها و Packها |
+| حافظه بلندمدت و RAG | Context Builder |
+| صورت‌حساب‌دهی و مدیریت کامل هزینه | `UsageRecord`، `Model Price`، سقف سخت |
+| صوت و MCP | Channel Adapter و رجیستری ابزار |
+| RPA | `Agent Task`، Integration Target، `needs_input` |
+| مودیان، حقوق ایران، جلالی کامل | `karyar_iran` و `karyar_hr_ir` |
+| Control Plane، تجمیع مصرف، و Observability کامل | اسکریپت‌های deploy، `UsageSink`، `correlation_id` |
+| PostgreSQL، Temporal، LiteLLM | کد مستقل از نوع پایگاه داده. AI Gateway |
 
 # ۳۱. مثال‌های سرتاسری
 
-> در همه مثال‌ها نام ایجنت‌ها فقط **انتساب** است. تعریف‌های گردش‌کار به نقش کاری اشاره می‌کنند.
+> در همه مثال‌ها نام ایجنت‌ها فقط **انتساب** است. «n8n» یعنی Workflow کوتاهی که فقط Karyar API را صدا می‌زند.
 
-## مثال ۱ — مشتری ← Ava ← تأیید مشتری ← بازبینی کارمند ← Lead در ERPNext ← Hanna (کلینیک کاشت مو)
+## مثال ۱ — مشتری ← Ava ← تأیید مشتری ← بازبینی کارمند ← Lead در ERPNext ← Hanna (کلینیک)
 
-<div class="flow"><span>پیام مشتری</span><span>Ava جمع‌آوری</span><span>تأیید مشتری</span><span>بازبینی کارمند</span><span>Lead در ERPNext</span><span>رویداد</span><span>Hanna</span></div>
-
-| مورد | جزئیات |
-|---|---|
-| **Trigger** | `channel.message.received` از مخاطب جدید در اینستاگرام یا ویجت وب. پرونده بازی وجود ندارد، پس گردش‌کار `clinic_intake@v1` شروع می‌شود |
-| **Agent** | Ava، با نقش کاری `intake`. توانمندی‌ها: گفت‌وگو با مشتری، `validate_phone`، `normalize_text`، `parse_persian_date`. **بدون** هیچ توانمندی نوشتن در ERPNext در این گام |
-| **Data** | Schema ‏`IntakeData`: نام، موبایل، خدمت، سن، شهر، زمان ترجیحی. در `context` پرونده ذخیره می‌شود و **هنوز در ERPNext نیست** |
-| **Workflow steps** | `agent_task(intake)` ← `validate` ← `human_task(customer_confirm, level=confirm)` ← `human_task(staff_review)` ← `erp_action(crm.lead.create)` ← `end` |
-| **Human interaction** | (۱) مشتری: «بله، اطلاعاتم درسته، بفرستید». تأیید به hash ‏h1 گره می‌خورد. (۲) کارمند پذیرش در Workspace: «سن اشتباه است، ۳۸ کن». نتیجه `task.patch` و نسخه ۲ است. بعد: «بفرست مرحله بعد». سیستم خلاصه نهایی را نشان می‌دهد و کارمند «بله» می‌گوید. تصمیم approve با hash ‏h2 ثبت می‌شود. سیاست گام می‌گوید «اصلاح سن توسط کارمند، تأیید مجدد مشتری لازم ندارد» و این در ممیزی ثبت می‌شود |
-| **ERPNext action** | ایجاد `Lead` با فیلدهای سفارشی (`service`، `age`) و `source=Instagram`، با کلید idempotency برابر شناسه پرونده |
-| **Event** | `erp.lead.created` از Outbox |
-| **Next agent** | گردش‌کار `sales_followup` که trigger آن ‏`erp.lead.created` با شرط `service in clinic_services` است، شروع می‌شود. گام اول `agent_task(sales)` است و انتساب می‌گوید با **Hanna** |
-| **Final result** | Lead در ERPNext ثبت شده است. Hanna دستور کار ساخت‌یافته دارد و برای مشاور یک ToDo تعیین وقت می‌سازد. مشتری پیام «درخواست شما ثبت شد» را دریافت کرده است. **هیچ انسانی پرونده را دستی منتقل نکرد** |
-
-## مثال ۲ — Hanna ← سفارش ← تأیید پرداخت توسط انسان ← رویداد ← Arman ← تأیید ← سند حسابداری
-
-<div class="flow"><span>Hanna: سفارش</span><span>تأیید پرداخت (انسان)</span><span>Payment Entry پیش‌نویس</span><span>رویداد</span><span>Arman</span><span>تأیید حسابدار</span><span>ثبت نهایی</span></div>
+<div class="flow"><span>مشتری در Karyar</span><span>Ava: پیش‌ثبت</span><span>تأیید مشتری</span><span>Workspace کارمند</span><span>Promote: Lead</span><span>Webhook</span><span>n8n</span><span>Hanna</span></div>
 
 | مورد | جزئیات |
 |---|---|
-| **Trigger** | ادامه پرونده `sales_followup`. مشتری پیش‌فاکتور را می‌پذیرد |
-| **Agent** | Hanna (نقش `sales`) و سپس Arman (نقش `accounting`) |
-| **Data** | Quotation و Sales Order. اطلاعات پرداخت: مبلغ، روش، شماره پیگیری و تصویر رسید |
-| **Workflow steps** | (الف) `sales_followup`: ‏`erp_action(quotation.create_draft)` ← تأیید مشتری ← `erp_action(sales_order.create_and_submit)` (سیاست Tenant: ثبت خودکار سفارش مجاز است) ← `human_task(payment_confirm)` برای نقش «صندوق» ← `erp_action(payment_entry.create_draft)`. (ب) `accounting_posting`، با trigger ‏`erp.payment_entry.created` و شرط `docstatus=0 and karyar_source=sales_followup` |
-| **Human interaction** | (۱) صندوق‌دار: «۲۰۰ میلیون ریال کارت‌به‌کارت شد، رسید پیوست». Hanna فیلدها را پر می‌کند و صندوق‌دار تأیید می‌کند. (۲) حسابدار: Arman خلاصه را نشان می‌دهد: «پرداخت پیش، مطابق سفارش؛ فاکتور فروش پیش‌نویس آماده است». حسابدار: «حساب بانک را ملت بگذار». نتیجه `patch` است. تأیید با سطح `strong` (تأیید صریح به‌علاوه OTP) |
-| **ERPNext action** | Arman: ‏`make_sales_invoice` به‌صورت پیش‌نویس، تطبیق مبلغ‌ها، اتصال Payment Entry. بعد از تأیید: ‏`submit` هر دو سند و ایجاد ثبت‌های دفتر کل توسط خود ERPNext |
-| **Event** | `erp.payment_entry.created` و بعد `erp.sales_invoice.submitted` |
-| **Next agent** | (اختیاری) گردش‌کار `moadian_submit` در `karyar_iran` که سیستمی است و ایجنت ندارد. اعلان فاکتور به مشتری از کانال |
-| **Final result** | سند حسابداری با تأیید حسابدار ثبت شد. Audit Log شامل این‌هاست: پیشنهاد Arman، اصلاح حسابدار، hash تأییدشده، و اسناد اثرپذیرفته |
+| **Trigger** | پیام مشتری در ویجت وب، بله یا اینستاگرام. گفت‌وگوی زنده **در Karyar** است و پرونده `clinic_intake` ساخته می‌شود |
+| **Agent** | Ava (نقش `intake`). ابزارها: نرمال‌سازی، اعتبارسنجی موبایل و کد ملی. **بدون** ابزار Promote |
+| **Data** | پیش‌ثبت در `Karyar Case`: نام، موبایل، خدمت، سن، شناسه اینستاگرام. **هنوز در ERPNext نیست** |
+| **Event** | `intake.completed` (پس از تأیید مشتری، به hash ‏h1 گره خورده) |
+| **Workflow steps** | n8n: ‏`human_tasks.create(template=staff_review)`، پایان. سپس رویداد `human_task.decided`. n8n: ‏`promote(case, crm.lead)`، سپس `agents.run_task(sales)` |
+| **Human interaction** | کارمند پذیرش: «سن اشتباه است، ۳۸ کن». ایجنت Diff را نشان می‌دهد («سن: ۳۶ ← ۳۸؛ تأیید؟») و کارمند تأیید می‌کند. نسخه ۲ ثبت می‌شود. «شماره ثابت ندارد؛ از مشتری بگیر». یک Agent Task برای Ava ساخته می‌شود، Ava از مشتری می‌پرسد و نسخه ۳ با منبع «مشتری» ثبت می‌شود. کارمند: «بفرست مرحله بعد». Approval Policy عملیات `crm.lead` تک‌نفره است، پس تصمیم `approved` با hash ‏h3 ثبت می‌شود |
+| **ERPNext action** | Promote: ‏Lead و Contact با کنترلرهای ERPNext، و ردیف `Contact Channel` (instagram) با رضایت. خلاصه گفت‌وگو در Timeline ‏Lead (`Communication` با medium برابر Chat) |
+| **Next agent** | Webhook استاندارد `erp.lead.created`، سپس n8n، سپس `agents.run_task(sales)` برای **Hanna** |
+| **Final result** | Lead در ERPNext. Hanna پیگیری را آغاز می‌کند و یک ToDo استاندارد برای مشاور می‌سازد. هیچ‌کس پرونده را دستی منتقل نکرد |
 
-## مثال ۳ — یک ایجنت با چند نقش (CRM + فروش + حسابداری) در شرکت کوچک
-
-| مورد | جزئیات |
-|---|---|
-| **Trigger** | همان گردش‌کارهای مثال ۱ و ۲ (از همان Pack) |
-| **Agent** | «سارا». انتساب نقش در این Tenant: `intake`، `sales` و `accounting`، همه با سارا |
-| **Data** | همان Schemaها |
-| **Workflow steps** | بدون تغییر در تعریف. Override در Tenant: گام `staff_review` با شرط `tenant.policy.staff_review=false` رد می‌شود |
-| **Human interaction** | فقط یک نفر (مالک): تأیید قبل از ثبت حسابداری، با سطح `confirm` |
-| **ERPNext action** | مثل مثال ۲ |
-| **Event** | همان رویدادها. **تحویل هنوز با رویداد انجام می‌شود**، حتی اگر فرستنده و گیرنده هر دو سارا باشند |
-| **Next agent** | سارا در نقش بعدی |
-| **Final result** | نکته معماری: ترکیب نقش‌ها **مجوزها را در هم ادغام نمی‌کند**. در گفت‌وگو با مشتری، سارا فقط توانمندی‌های گام `intake` را دارد و ابزار حسابداری برایش در دسترس نیست (Step Scope). در ممیزی هم مشخص است «سارا در نقش حسابداری در گام X» عمل کرده است |
-
-## مثال ۴ — دو گام تأیید انسانی متفاوت (خرید)
-
-<div class="flow"><span>ERPNext: درخواست مواد</span><span>ایجنت انبار</span><span>تأیید ۱: سرپرست انبار</span><span>تأیید ۲: مدیر مالی</span><span>ثبت سفارش خرید</span><span>n8n: ارسال به تأمین‌کننده</span></div>
+## مثال ۲ — Hanna ← سفارش ← تأیید پرداخت ← Arman ← تأیید چندمرحله‌ای ← سند حسابداری
 
 | مورد | جزئیات |
 |---|---|
-| **Trigger** | ERPNext بر اساس «سطح سفارش مجدد» خودش Material Request ثبت می‌کند. رویداد `erp.material_request.submitted` گردش‌کار `procurement@v2` را شروع می‌کند |
+| **Trigger** | ادامه `sales_followup`. مشتری پیش‌فاکتور را می‌پذیرد |
+| **Agent** | Hanna (نقش `sales`)، سپس Arman (نقش `accounting`) |
+| **Data** | پیش‌ثبت سفارش در Karyar، همراه با **پیش‌نمایش ERPNext بدون ذخیره** (قیمت، مالیات، جمع) و hash آن |
+| **Workflow steps** | **(الف)** n8n: ‏`promote(case, selling.sales_order)`. یک **Auto-Execution Policy** («سفارش تا سقف X برای مشتری عادی»، نسخه ۳، تعریف‌شده توسط مدیر فروش) آن را مجاز می‌کند. بعد `human_tasks.create(payment_confirm)` برای صندوق‌دار. **(ب)** ‏`human_task.decided`، سپس n8n: ‏`agents.run_task(accounting)` |
+| **Human interaction** | صندوق‌دار اطلاعات پرداخت را به‌صورت گفت‌وگو وارد می‌کند (Change Proposal و تأیید). Arman پیش‌ثبت Payment Entry و Sales Invoice را با **پیش‌نمایش دفتر کل** آماده می‌کند. **Approval Request ترتیبی:** حسابدار، سپس مدیر مالی (`strong`). حسابدار: «حساب بانک را ملت بگذار». با Diff و تأیید، **تأییدهای قبلی باطل می‌شوند** و تأیید مجدد گرفته می‌شود |
+| **ERPNext action** | Promote: ‏Payment Entry و Sales Invoice با Submit. ثبت‌های دفتر کل را **خود ERPNext** می‌سازد. فاکتور با ایمیل استاندارد ERPNext و Print Format برای مشتری ارسال می‌شود |
+| **Event** | `erp.sales_invoice.submitted` |
+| **Next agent** | (آینده) فرایند مودیان در `karyar_iran` |
+| **Final result** | سند مالی فقط پس از کامل شدن Approval با همان hash ثبت شد. ممیزی کامل است |
+
+## مثال ۳ — یک ایجنت با چند نقش (شرکت کوچک)
+
+| مورد | جزئیات |
+|---|---|
+| **Trigger** | همان Workflowهای مثال ۱ و ۲ (از همان Pack) |
+| **Agent** | «سارا». انتساب نقش: ‏`intake`، `sales` و `accounting`، همه با سارا. تأیید مالی با مالک (انسان) |
+| **Data / Workflow** | بدون تغییر تعریف. گام بازبینی کارمند با یک override در Tenant حذف شده است |
+| **Human interaction** | فقط مالک: Approval تک‌نفره برای اسناد مالی |
+| **نکته معماری** | ترکیب نقش‌ها **مجوزها را ادغام نمی‌کند.** در گفت‌وگو با مشتری فقط توانمندی‌های `intake` فعال است (محدوده گام). ممیزی ثبت می‌کند «سارا در نقش X در گام Y» عمل کرده است |
+| **Final result** | همان نتیجه مثال‌های ۱ و ۲ با یک ایجنت و یک تأییدکننده |
+
+## مثال ۴ — تأیید ترتیبی و M از N (خرید)
+
+| مورد | جزئیات |
+|---|---|
+| **Trigger** | ERPNext بر اساس **سطح سفارش مجدد استاندارد** یک Material Request می‌سازد. Webhook ‏`erp.material_request.submitted` به n8n می‌رود |
 | **Agent** | ایجنت نقش `inventory` |
-| **Data** | اقلام، مقدار، تأمین‌کنندگان قبلی و آخرین قیمت‌ها (از گزارش فهرست‌شده «Item-wise Purchase History») |
-| **Workflow steps** | `agent_task(inventory: draft PO)` ← `condition(total > threshold)` ← `human_task(approval_1: role=Stock Manager, editable=[qty, supplier])` ← `human_task(approval_2: role=Accounts Manager, level=strong, show=budget_report)` ← `erp_action(purchase_order.submit)` ← `integration_call(n8n: send_po)` |
-| **Human interaction** | سرپرست انبار: «۲۰ تا کم کن، تأمین‌کننده B ارزان‌تر است». ایجنت اصلاح می‌کند و تأیید ۱ ثبت می‌شود. مدیر مالی: «با این بودجه، فعلاً نصفش را بخر» و **رد همراه با دلیل**. شاخه رد پرونده را به گام ایجنت برمی‌گرداند و پیش‌نویس جدید ساخته می‌شود. سیاست `re_review_on_change=all_previous` می‌گوید هر دو تأیید باید دوباره گرفته شوند |
-| **ERPNext action** | Purchase Order پیش‌نویس و سپس ثبت نهایی |
-| **Event** | `erp.purchase_order.submitted` و سپس callback از n8n |
-| **Next agent** | ندارد. بعدها رسیدن کالا (`erp.purchase_receipt.submitted`) گردش‌کار تحویل را شروع می‌کند |
-| **Final result** | سفارش خرید با دو تأیید مستقل ثبت و برای تأمین‌کننده ارسال شد. هر دو دور تأیید در ممیزی موجود است |
+| **Data** | پیش‌ثبت Purchase Order در Karyar، با پیش‌نمایش. تأمین‌کننده و قیمت از گزارش‌های استاندارد خرید |
+| **Workflow steps** | n8n: ‏`agents.run_task(inventory)`، سپس `approvals.create(policy=po_over_threshold)` |
+| **Human interaction** | **مرحله ۱:** یکی از دو سرپرست انبار. **مرحله ۲:** ۲ از ۳ عضو کمیته مالی، به‌صورت موازی. یکی از اعضای کمیته: «۲۰ عدد کم کن». با Diff و تأیید، **تأییدهای قبلی باطل می‌شوند** و هر دو مرحله دوباره تأیید می‌دهند |
+| **ERPNext action** | Promote: ‏Purchase Order با Submit. ارسال برای تأمین‌کننده با **ایمیل استاندارد ERPNext و Print Format** (بدون n8n) |
+| **Event** | `erp.purchase_order.submitted` |
+| **Final result** | سفارش خرید فقط پس از کامل شدن هر دو مرحله با همان hash ثبت شد |
 
-## مثال ۵ — ترکیب کاملاً متفاوت: تولیدکننده مواد غذایی، بدون Hanna و Arman
+## مثال ۵ — ترکیب کاملاً متفاوت: تولیدکننده مواد غذایی
 
-ایجنت‌ها: **Ava** (سفارش عمده از بله)، **نیما** (انبار + تولید)، **کیفیت**، و **مدیریت**.
+ایجنت‌ها: **Ava** (سفارش عمده از بله)، **نیما** (انبار و تولید)، **کیفیت**، و **مدیریت**. Hanna و Arman در این شرکت وجود ندارند.
 
 | مورد | جزئیات |
 |---|---|
-| **Trigger** | پیام پخش‌کننده در بله: «۵۰ کارتن رب ۸۰۰ گرمی برای فروشگاه شعبه ۲» |
-| **Agent** | Ava (نقش `b2b_order_intake`). مشتری از طریق `Contact Identity` شناسایی می‌شود |
-| **Data** | قلم کالا (تطبیق نام محاوره‌ای با Item از راه ابزار جست‌وجو)، مقدار، آدرس، اعتبار مشتری |
-| **Workflow steps** | `agent_task(intake)` ← `validate(price_list, credit_limit)` ← `condition(customer_group=trusted and amount<credit)`. اگر درست بود، **بدون انسان** به `erp_action(sales_order.submit)`. اگر نه، `human_task(sales_manager)`. سپس `fulfillment`: ‏`agent_task(nima: stock check)` ← در صورت کمبود `erp_action(work_order.draft)` ← `human_task(production_supervisor)` ← `wait_event(erp.stock_entry.submitted: Manufacture)` ← `agent_task(quality)` ← `human_task(qc_technician)` ← `erp_action(quality_inspection.submit)` ← `erp_action(delivery_note.draft)` ← `human_task(warehouse_loading)` ← `erp_action(delivery_note.submit)` ← `notify(customer via Bale)` |
-| **Human interaction** | سرپرست تولید: «بگذارش برای شیفت فردا صبح». نیما زمان Work Order را اصلاح می‌کند. تکنسین کیفیت به‌صورت گفت‌وگو: «pH ‏۴٫۲، بریکس ۲۸». ایجنت کیفیت مقادیر را در Quality Inspection پر می‌کند و با قالب بازرسی مقایسه می‌کند. انباردار: «بار زده شد» |
-| **ERPNext action** | Sales Order، Work Order، Stock Entry، Quality Inspection، Delivery Note. **همه از کنترلرهای ERPNext** |
-| **Event** | `erp.sales_order.submitted`، ‏`erp.stock_entry.submitted` و `erp.delivery_note.submitted` |
-| **Next agent** | نیما، سپس کیفیت، سپس نیما، سپس Ava (اعلان). ایجنت مدیریت با گردش‌کار زمان‌بندی‌شده `daily_brief` هر روز ساعت ۸ گزارش `management_summary` را برای مدیر در بله می‌فرستد و به پرسش‌های بعدی **با مجوز خود مدیر** پاسخ می‌دهد |
-| **Final result** | سفارش بدون دخالت انسان ثبت شد و انسان‌ها فقط در نقاط کیفیت، تولید و بارگیری حضور داشتند. همان موتور و همان ابزارها، با ترکیب کاملاً متفاوت |
+| **Trigger** | پیام پخش‌کننده در بله. مخاطب از روی `Contact Channel` (bale) شناسایی می‌شود |
+| **Agent** | Ava (`b2b_order_intake`)، سپس نیما، سپس کیفیت، سپس Ava (اعلان) |
+| **Data** | پیش‌ثبت Sales Order. قیمت از Price List و اعتبار از Credit Limit استاندارد |
+| **Workflow steps** | Auto-Execution Policy برای «مشتری معتبر و درون سقف اعتبار»، سپس Promote ‏Sales Order، سپس Webhook و n8n، سپس نیما (موجودی پیش‌بینی‌شده استاندارد). در صورت کمبود: پیش‌ثبت Work Order و Approval سرپرست تولید، سپس Promote. پس از رویداد Stock Entry ‏Manufacture: ایجنت کیفیت، سپس Quality Inspection |
+| **Human interaction** | سرپرست تولید: «بگذار برای شیفت فردا صبح» (Change Proposal و تأیید). تکنسین کیفیت: «pH ‏۴٫۲، بریکس ۲۸». ایجنت مقادیر را با **قالب بازرسی کیفیت استاندارد ERPNext** مقایسه می‌کند و تکنسین تأیید می‌کند. انباردار: «بار زده شد» |
+| **ERPNext action** | Sales Order، Work Order، Stock Entry، Quality Inspection و Delivery Note. **همه با کنترلرهای ERPNext** |
+| **Next agent** | Ava از Channel Gateway در بله به مشتری اطلاع می‌دهد. ایجنت مدیریت با Cron در n8n هر روز گزارش خلاصه را برای مدیر می‌فرستد و پرسش‌ها را **با مجوز خود مدیر** پاسخ می‌دهد |
+| **Final result** | همان موتور و همان ابزارها، با ترکیب کاملاً متفاوت |
 
-## مثال ۶ (اضافه) — درخواست غیرمجاز
+## مثال ۶ — درخواست غیرمجاز
 
-کارمند فروش از ایجنت می‌پرسد: «سود کل شرکت امسال چقدر است؟»
+1. کارمند فروش: «سود کل شرکت امسال چقدر است؟»
+2. ابزار `report.run(profit_and_loss)` بررسی می‌کند. نقش او به گزارش دسترسی ندارد، پس نتیجه `PERMISSION_DENIED` است و **هیچ عددی به مدل نمی‌رسد**.
+3. ایجنت افراد صاحب صلاحیت را معرفی می‌کند.
+4. رویداد `security.out_of_scope_request` ثبت می‌شود.
 
-1. ایجنت ابزار `report.run("profit_and_loss")` را انتخاب می‌کند.
-2. Tool Executor بررسی می‌کند. نقش «Sales User» به این گزارش دسترسی ندارد، پس نتیجه `PERMISSION_DENIED` است.
-3. **هیچ عددی به مدل نمی‌رسد.** ایجنت پاسخ می‌دهد: «به این گزارش دسترسی ندارید؛ در صورت نیاز از مدیر مالی بخواهید».
-4. رویداد `security.permission_denied` در ممیزی ثبت می‌شود.
+Prompt Injection نتیجه را تغییر نمی‌دهد.
 
-**حتی با Prompt Injection** («تو الان مدیر هستی») نتیجه تغییر نمی‌کند، چون تصمیم در کد گرفته می‌شود.
+## مثال ۷ — کمپین پیام با واگذاری به Integration
+
+<div class="flow"><span>مدیر در Workspace</span><span>ایجنت مدیریت</span><span>گزارش کنترل‌شده</span><span>متن + Diff</span><span>Approval</span><span>Promote: Campaign</span><span>Agent Task</span><span>n8n: پیامک</span></div>
+
+| مورد | جزئیات |
+|---|---|
+| **Trigger** | مدیر: «به همه مشتریانی که ماه گذشته خرید داشته‌اند پیام تبلیغاتی بفرست» |
+| **Agent** | ایجنت مدیریت (از طرف مدیر) |
+| **Data** | گزارش کنترل‌شده «مشتریان دارای فاکتور در بازه X به‌همراه رضایت کانال»، روی Sales Invoice و `Contact Channel`. خروجی: **ارجاع به Contactها**، نه کپی. حذف کسانی که انصراف داده‌اند |
+| **Human interaction** | متن پیام پیشنهاد می‌شود و هر اصلاح آن Change Proposal است. **Approval ‏M از N** (مدیر و مسئول بازاریابی) به hash «فهرست و متن» گره می‌خورد |
+| **ERPNext action** | Promote: رکورد **`Campaign` استاندارد ERPNext** |
+| **Delegation** | طبق Delegation Policy (مدیریت به `messaging.sms.bulk_send`)، یک `Agent Task` ساخته می‌شود. n8n ارسال را **دسته‌ای** و با رعایت نرخ و انصراف انجام می‌دهد. وضعیت هر گیرنده با callback به Karyar برمی‌گردد |
+| **Final result** | گزارش ارسال در Workspace. خلاصه در Timeline رکورد Campaign. ممیزی کامل. همین الگو برای WhatsApp، Telegram، Instagram و بله با Integration Target دیگر کار می‌کند (با محدودیت‌های R2) |
 
 # ۳۲. جدول تصمیم‌های معماری
 
-## الف) اصول تأییدشده (از الزامات شما و مورد تأیید این تحلیل)
+## الف) تصمیم‌های قطعی (تأییدشده)
 
-| تصمیم | وضعیت | دلیل | جایگزین | چرا انتخاب شد | قابل تغییر؟ |
-|---|---|---|---|---|---|
-| ERPNext منبع حقیقت | تأییدشده | جلوگیری از دو منبع حقیقت | پایگاه داده جدای Karyar | سازگاری، حسابرسی، کاهش کار | خیر (بنیادی) |
-| بدون دسترسی خام به پایگاه داده یا SQL برای ایجنت | تأییدشده | امنیت و صحت | Text-to-SQL | قابل کنترل و ممیزی | خیر |
-| مجوز بیرون از مدل اعمال می‌شود | تأییدشده | prompt قابل دور زدن است | محدودیت در prompt | امنیت واقعی | خیر |
-| HITL به‌صورت گام یا سیاست قابل‌پیکربندی | تأییدشده | تنوع کسب‌وکارها | قانون ثابت در کد | انعطاف | خیر |
-| جدایی ایجنت، نقش کاری، توانمندی، مجوز و گردش‌کار | تأییدشده | ترکیب‌های متفاوت هر شرکت | ایجنت‌های ثابت | ۸۰/۲۰ | خیر |
-| تحویل از راه رویداد و گردش‌کار | تأییدشده | قابلیت اطمینان و ممیزی | چت ایجنت با ایجنت | قطعی بودن | خیر |
-| هوش مصنوعی فقط درون فرایند تعریف‌شده عمل می‌کند | تأییدشده | کنترل کسب‌وکار | ایجنت خودمختار | ریسک پایین | خیر |
-| لایه مدل مستقل از ارائه‌دهنده | تأییدشده | تحریم، هزینه، کیفیت | SDK یک ارائه‌دهنده | انعطاف | خیر |
-| بدون تغییر هسته ERPNext | تأییدشده | ارتقاپذیری | fork سنگین | هزینه نگهداری | فقط با دلیل مستند |
-| n8n فقط برای یکپارچه‌سازی و RPA فقط برای سیستم‌های بدون API | تأییدشده | جلوگیری از پراکندگی منطق | منطق در n8n | نگهداری‌پذیری | خیر |
+| تصمیم | دلیل | جایگزین ردشده | قابل تغییر؟ |
+|---|---|---|---|
+| ERPNext موتور منطق و منبع نهایی حقیقت؛ ERPNext-first | جلوگیری از ERP دوم | منطق موازی در Karyar | خیر |
+| Karyar: ایجنت، گفت‌وگو، Workspace، کنترل، مجوز، ممیزی، مصرف AI، فرایند | مرز روشن | — | خیر |
+| n8n فقط برای هماهنگی و اجرای Integration | منطق و مجوز متمرکز در Karyar | منطق در n8n | با موتور داخلی در آینده |
+| گفت‌وگوی زنده، اجرای ایجنت، تصمیم، مجوز، Human Task و عملیات نهایی در Karyar | کنترل | در n8n | خیر |
+| Human Task به‌صورت Workspace مشترک و گفت‌وگومحور | تجربه کاربری غیر ERP | فقط دکمه تأیید و رد | خیر |
+| Change Proposal با Diff و تأیید صریح برای تغییر حساس | جلوگیری از برداشت اشتباه AI | اعمال مستقیم | خیر |
+| تأیید تک‌نفره، چندنفره، M از N، ترتیبی و موازی از فاز ۱ | نیاز کسب‌وکار | فقط تک‌نفره | خیر |
+| واگذاری در Karyar با اشتراک اختیار | امنیت | واگذاری آزاد | خیر |
+| زنجیره مجوز در کد؛ Prompt مجوز یا تأیید نمی‌سازد | امنیت واقعی | محدودیت در Prompt | خیر |
+| بدون SQL و دسترسی خام به پایگاه داده؛ گزارش از ERPNext و Queryهای کنترل‌شده | امنیت و صحت | Text-to-SQL | خیر |
+| مصرف AI به تفکیک Tenant، Agent، Workflow، User و Task | هزینه و شفافیت | — | خیر |
+| جداسازی Tenant و Integrationهای Tenant-aware | امنیت | — | خیر |
+| RPA فقط برای سیستم‌های بدون API؛ هرگز برای ERPNext؛ OTP و CAPTCHA به Human Task | پایداری | RPA روی ERPNext | خیر |
+| `Contact Channel` روی Contact؛ حذف `Contact Identity` | داده تماس در ERP | جدول در Karyar | خیر |
+| اجرای خودکار فقط با Policy قابل ممیزی | «تصمیم شخصی ایجنت» وجود ندارد | خودمختاری ایجنت | خیر |
+| پیش‌ثبت پیش‌فرض فقط در Karyar؛ پیش‌نویس ERPNext فقط اختیاری و قفل‌شده | بدون ERP دوم و بدون دو محل ویرایش | پیش‌نویس بومی همیشگی | استثنا برای هر Workflow |
+| hash پیش‌نمایش، Approval، و Re-Approval | «آنچه تأیید شد همان اجرا می‌شود» | — | خیر |
+| پس از ثبت نهایی، خواندن فقط از ERPNext | یک منبع حقیقت | کش در Karyar | خیر |
+| Tenant = مرز کسب‌وکار یا پروژه؛ شعبه با User Permission | ساده و استاندارد | پروژه درون Tenant | خیر |
 
-## ب) پیشنهادی، هنوز تأییدنشده
+## ب) پیشنهادی (هنوز تأیید نشده)
 
-| تصمیم | وضعیت | دلیل | جایگزین | چرا انتخاب شد | قابل تغییر؟ |
-|---|---|---|---|---|---|
-| پایه ERPNext و Frappe v16 | پیشنهادی | پایدار و پشتیبانی‌شده | develop (v17)، v15 | ثبات به‌علاوه عمر پشتیبانی | بله (ارتقا به v17) |
-| MariaDB | پیشنهادی | تنها گزینه رسمی v16 | PostgreSQL | پشتیبانی | بله در v17 |
-| مدل B (سایت برای هر Tenant) و C برای حساس‌ها | پیشنهادی | جداسازی پایگاه داده با هزینه معقول | A یا C برای همه | توازن | بله (انتقال سایت) |
-| چند مخزن و `karyar-deploy` | پیشنهادی | سازوکار bench و جدایی از هسته | تک‌مخزن داخل fork | ارتقاپذیری | بله |
-| یک اپ `karyar` با ماژول‌های جدا | پیشنهادی | سادگی | چند اپ از ابتدا | سربار کمتر | سخت‌تر (انتقال DocType) |
-| موتور گردش‌کار سبک داخل Frappe | پیشنهادی | هم‌تراکنش و هم‌مجوز | Temporal، n8n، Frappe Workflow | بدون زیرساخت جدید | بله (تعریف از اجراکننده جداست) |
-| Outbox و RQ برای رویداد | پیشنهادی | موجود و قابل اعتماد | Kafka، RabbitMQ | سادگی | بله (Relay) |
-| اجرای ایجنت در Workerهای RQ | پیشنهادی | چندمستأجری و مجوز طبیعی | سرویس async جدا | سادگی | بله (رابط تمیز) |
-| حلقه ایجنت سبک خودمان | پیشنهادی | کنترل کامل | LangGraph یا CrewAI به‌عنوان مالک | ممیزی و مجوز | بله |
-| `Responsibility` به‌عنوان نقش کاری | پیشنهادی | جلوگیری از اشتباه با Role در Frappe | Role | وضوح | بله (نام) |
-| نوشتن پیش‌نویس‌محور و Action Proposal | پیشنهادی | ایمنی | نوشتن مستقیم | قابل تأیید | خیر (توصیه) |
-| تصمیم ساخت‌یافته، `payload_hash` و سطح تأیید | پیشنهادی | گفت‌وگو و ممیزی با هم | فقط دکمه، یا فقط تفسیر مدل | هر دو هدف | سطوح قابل تنظیم |
-| یک لایه سرویس با سه نمایش (ابزار، REST، MCP) | پیشنهادی | منطق یکتا | APIهای جدا | سازگاری | خیر (توصیه) |
-| AI Gateway به‌صورت کتابخانه و بعداً LiteLLM | پیشنهادی | شروع ساده | LiteLLM از روز اول | سربار کمتر | بله |
-| Pack برای ۸۰/۲۰ | پیشنهادی | پیکربندی قابل حمل | clone کد | نگهداری‌پذیری | بله |
-| Karyar Workspace به‌صورت SPA درون Frappe | پیشنهادی | تجربه کاربری غیر ERP | فقط Desk، یا فقط پیام‌رسان | کارایی کارکنان | بله |
-| سقف سخت هزینه AI از روز اول | پیشنهادی | حفاظت مالی | بدون سقف | ریسک | خیر (توصیه) |
-| میزبانی ترکیبی | پیشنهاد اولیه | AI و کانال‌ها در برابر اقامت داده | داخل یا خارج کامل | توازن | بله |
+| تصمیم | دلیل | جایگزین | قابل تغییر؟ |
+|---|---|---|---|
+| پایه ERPNext و Frappe v16 با MariaDB | پایدار؛ Postgres در v16 رسمی نیست | develop، v15 | بله (v17) |
+| مدل B (سایت برای هر Tenant) و C برای حساس‌ها | جداسازی پایگاه داده با هزینه معقول | A | بله |
+| n8n جدا برای هر Tenant | n8n Community جداسازی ندارد | n8n مشترک | بله (Enterprise یا موتور داخلی) |
+| چند مخزن و `karyar-deploy`؛ یک اپ `karyar` با ماژول‌ها | سازوکار bench و سادگی | تک‌مخزن یا چند اپ | دشوار |
+| `Responsibility` برای ایجنت و انسان | یک مفهوم برای هر دو | جدا | بله |
+| `ToDo`، Email، SMS Settings و `Communication` استاندارد | ERPNext-first | ساختن سیستم موازی | بله |
+| Workspace به‌صورت SPA درون Frappe | بدون سرور جدا | سرویس جدا | بله |
+| AI Gateway به‌صورت کتابخانه و سقف سخت هزینه | ساده و امن | LiteLLM از ابتدا | بله |
+| پیش‌نمایش با تابع داخلی ERPNext | بدون بازنویسی محاسبات | savepoint و rollback | بله (spike) |
 
 ## ج) پرسش‌های باز
 
-| پرسش | چرا مهم است | چه کسی تصمیم می‌گیرد |
-|---|---|---|
-| محل میزبانی و اقامت داده | قانونی، دسترسی AI و کانال‌ها | شما و مشاور حقوقی |
-| ارائه‌دهندگان AI و کلید سکو یا BYOK | هزینه، کیفیت فارسی، قانون | شما |
-| صنعت و مشتری پایلوت | اولین Pack | شما |
-| کانال‌های نسخه اول | دسترسی در ایران | شما |
-| React یا frappe-ui برای Workspace | مهارت تیم | تیم فنی |
-| مجوز Karyar و جایگزین n8n | مدل کسب‌وکار | شما و حقوقی |
-| سطح تأیید پیش‌فرض مالی | امنیت در برابر سرعت | شما |
-| سیاست داده پزشکی | قانونی | شما و حقوقی |
-| آیا مشتری به Desk دسترسی دارد؟ کدام نقش‌ها؟ | امنیت چندمستأجری | شما |
-| Control Plane: سفارشی یا Press | مقیاس | بعداً |
+میزبانی و اقامت داده، ارائه‌دهندگان AI و BYOK، صنعت پایلوت، کانال‌های نسخه اول، فناوری Workspace، مجوز Karyar و n8n، سیاست داده پزشکی، دسترسی به Desk (§۲۹).
 
-## د) ویژگی‌های فازهای آینده
+## د) آینده
 
-| ویژگی | پیش‌نیازی که از الان در معماری هست |
+همان فهرست §۳۰.
+
+# ۳۳. تعارض‌ها: حل‌شده و باقی‌مانده
+
+**حل‌شده در این نسخه:**
+
+| تعارض (از v0.1 و CRها) | حل |
 |---|---|
-| سازنده گرافیکی گردش‌کار و ایجنت | Schema گراف نسخه‌دار |
-| تأیید موازی، escalation و timeout | رجیستری نوع گام و `Karyar Timer` |
-| مدیریت هزینه، صورت‌حساب و سهمیه | `UsageRecord`، `UsageSink` و `Model Price` |
-| حافظه بلندمدت و RAG | Context Builder قابل افزودن |
-| صوت | آداپتور کانال |
-| MCP | رجیستری ابزار |
-| RPA | گام `rpa_job` و Human Task |
-| مودیان، چارت حساب، مالیات و جلالی کامل | `karyar_iran` و `regional_overrides` |
-| حقوق ایران | `karyar_hr_ir` روی HRMS |
-| مشاوره ایجنت با ایجنت | ابزار `consult` |
-| مشاهده‌پذیری کامل | `correlation_id` و لاگ ساخت‌یافته |
-| اجراکننده Temporal | جدایی تعریف و اجراکننده |
-| PostgreSQL | کد مستقل از نوع پایگاه داده |
-| Control Plane و راه‌اندازی خودکار | اسکریپت‌های `karyar-deploy` |
+| Workflow Engine اختصاصی (v0.1 §۷) در برابر n8n | n8n فقط برای هماهنگی. منطق، وضعیت و مجوز در Karyar. موتور اختصاصی موکول به آینده |
+| Automation Gateway (CR-01a) | حذف. فقط فهرست حداقلی Integration Target |
+| «اول پیش‌نویس در ERPNext» (P8 در v0.1) در برابر «پیش‌ثبت در Karyar» (CR-02) | پیش‌فرض Karyar. پیش‌نویس ERPNext فقط اختیاری و قفل‌شده |
+| پیش‌ثبت قابل مشاهده در هر دو سیستم (CR-04) در برابر «فقط Karyar» (CR-02) | یک Site مشترک. Case در Desk و Connections دیده می‌شود. آینه اختیاری |
+| ویرایش مستقیم ایجنت (CR-03) در برابر تأیید صریح (CR-04) | Change Proposal برای هر تغییر حساس |
+| «M از N» موکول به آینده (CR-01 و CR-03) در برابر الزام فاز ۱ | مدل یکپارچه Approval در فاز ۱ |
+| «فقط رویداد بین ایجنت‌ها» (v0.1 §۱۰) در برابر واگذاری | واگذاری کنترل‌شده در Karyar؛ حرکت مراحل با n8n |
+| `Contact Identity` در Karyar در برابر داده کانال در ERP | `Contact Channel` روی Contact |
+| «اجرای خودکار» در برابر «تصمیم شخصی ایجنت وجود ندارد» | اجرای خودکار تصمیم انسانیِ از پیش گرفته‌شده در Policy است |
+| تأییدهای Frappe Workflow و Karyar روی یک سند | Frappe Workflow فقط برای اسناد ساخته‌شده در Desk |
+| ساختن سیستم اعلان، تخصیص و تاریخچه موازی | `ToDo`، Notification، Email، SMS Settings، `Communication` و `Version` |
 
-# ۳۳. تعارض‌ها و محدودیت‌هایی که صریح گفته می‌شوند
-
-1. **«کاربر نیازی به ERPNext ندارد» در برابر واقعیت.** حسابدار برای بستن دوره، مغایرت‌گیری و گزارش‌های پیچیده همچنان به Desk نیاز دارد. Karyar کار روزمره را از Desk بیرون می‌آورد، نه کار تخصصی را. **پیشنهاد:** Workspace برای همه، Desk برای کاربران حرفه‌ای.
-2. **«بدون داده موازی» در برابر نیاز فرایند.** Ava قبل از ثبت Lead باید داده را جایی نگه دارد. این داده «وضعیت فرایند» است، نه «حقیقت کسب‌وکار». مرز در بخش ۲۲ تعریف شده است.
-3. **گفت‌وگوی آزاد در برابر ممیزی.** با تصمیم ساخت‌یافته و تأیید صریح حل شده است (بخش ۸). تأیید «کاملاً آزاد و بدون تأیید صریح» برای عملیات مالی **پیشنهاد نمی‌شود**.
-4. **دو ماشین حالت روی یک سند.** اگر Frappe Workflow و Karyar هر دو روی Sales Order حالت نگه دارند، تعارض پیش می‌آید. **قاعده:** روی DocTypeهایی که Karyar مدیریت می‌کند، Frappe Workflow فعال نشود، یا Karyar از `apply_workflow` استفاده کند.
-5. **«همه‌چیز قابل‌پیکربندی» در برابر «پیچیده نکن».** در فاز ۱ پیکربندی را تیم Karyar با JSON و فرم انجام می‌دهد. سازنده گرافیکی برای کاربر نهایی بعداً می‌آید.
-6. **ابر مشترک در برابر اقامت داده و داده پزشکی.** ممکن است بعضی مشتریان مدل C یا میزبانی اختصاصی بخواهند. معماری این را پشتیبانی می‌کند، اما هزینه‌اش بالاتر است.
-7. **کانال‌های پیشنهادی در برابر واقعیت ایران.** اینستاگرام، واتس‌اپ و تلگرام فیلتر هستند و API رسمی Meta برای کسب‌وکار ایرانی در دسترس نیست. شروع با ویجت وب و بله منطقی‌تر است.
-8. **ایجنت مدیریت با «دید کلی» در برابر حداقل دسترسی.** ایجنت مدیریت با مجوز **خود مدیر** عمل می‌کند و دسترسی ویژه‌ای ندارد.
-9. **«یک نقش توسط چند ایجنت یا انسان».** این به منطق مسیریابی (تقسیم بار، نوبتی) نیاز دارد. در فاز ۱ هر نقش در هر Tenant یک ایجنت دارد، و برای انسان‌ها Assignment Rule در Frappe استفاده می‌شود.
-10. **زنجیره خودکار در برابر شکست خاموش.** وقتی «هیچ‌کس دستی منتقل نمی‌کند»، پرونده گیرکرده دیده نمی‌شود. پس وضعیت `needs_attention`، داشبورد پرونده‌های گیرکرده و هشدار **الزامی‌اند**.
-11. **«خلاصه‌سازی توسط ایجنت» در برابر «AI منبع عدد نیست».** خلاصه مجاز است، اما اعداد فقط از نتیجه گزارش می‌آیند و منبع نمایش داده می‌شود.
+**باقی‌مانده:** **هیچ تعارض فنی بازی** که بدون تصمیم جدید حل نشود وجود ندارد. تنش‌های باقی‌مانده به هزینه یا حقوق مربوط‌اند، نه به معماری: هزینه n8n جدا برای هر Tenant (R5)، مجوز SUL در n8n (R13)، و محدودیت کانال‌ها (R2).
 
 # ۳۴. خروجی نهایی
 
-## ۳۴.۱ معماری پیشنهادی (در یک نگاه)
+## ۳۴.۱ معماری در یک نگاه
 
-- **پایه:** ERPNext و Frappe **v16** با **MariaDB**. هسته دست‌نخورده می‌ماند و fork فقط به‌عنوان آینه با پایه `version-16` نگه داشته می‌شود.
-- **اپ‌ها:**
-  - **`karyar`** (سکوی ایجنت: ایجنت، گردش‌کار، HITL، رویداد، سیاست، ابزار، API، AI Gateway، ممیزی، Workspace)
-  - **`karyar_iran`** (بومی‌سازی ایران)
-  - **`karyar_hr_ir`** (بعداً)
-  - **`karyar-deploy`** (استقرار و Packها)
-- **چندمستأجری:** یک Site برای هر Tenant روی Benchهای مشترک. Bench اختصاصی برای مشتریان حساس.
-- **هسته رفتاری:**
-  - گردش‌کار قطعی و نسخه‌دار، به‌علاوه ایجنت‌های هوشمند درون گام‌ها
-  - تحویل با رویداد (Outbox)
-  - HITL به‌صورت گام یا سیاست
-  - تأیید ساخت‌یافته با `payload_hash`
-  - مجوز چندلایه در کد که به Frappe ختم می‌شود
-- **یکپارچه‌سازی:** n8n فقط از Karyar API. RPA به‌صورت سرویس جدا و بعداً.
+- **ERPNext (v16):** منطق و حقیقت نهایی کسب‌وکار.
+- **Karyar:** لایه هوشمند، کنترل‌کننده و رابط. شامل ایجنت، گفت‌وگو، Workspace، Change Proposal، Approval، واگذاری، مجوز، Promote، ممیزی و مصرف AI.
+- **n8n (برای هر Tenant):** هماهنگی گام‌ها و اجرای Integration.
 
-## ۳۴.۲ توضیح ساده: کل سیستم چطور کار می‌کند؟
+## ۳۴.۲ توضیح ساده
 
-Karyar را مثل یک **شرکت با کارمندان دیجیتال** تصور کنید:
-
-- **ERPNext دفتر رسمی شرکت است.** فقط چیزی که آنجا ثبت شده «واقعی» است.
-- **گردش‌کارها دستورالعمل‌های اداری شرکت‌اند.** مشخص می‌کنند هر پرونده از کدام میزها و به چه ترتیبی عبور کند، و کجا امضای انسان لازم است.
-- **ایجنت‌ها کارمندان دیجیتال‌اند.** هرکدام یک یا چند «سمت» (نقش کاری) دارد و فقط به «کشوهایی» (ابزارهایی) دسترسی دارد که سمتش اجازه می‌دهد.
-- **وقتی کار یک میز تمام می‌شود، پرونده خودکار به میز بعدی می‌رود.** چون دفتر رسمی تغییر کرده یا مرحله تمام شده، نه چون کسی آن را دستی برده.
-- **انسان‌ها فقط جایی وارد می‌شوند که دستورالعمل گفته.** آن هم با گفت‌وگوی معمولی: «سن را اصلاح کن»، «بفرست مرحله بعد». ولی امضای نهایی همیشه روشن، ثبت‌شده و به همان متنی که دیده‌اند گره خورده است.
-- **نگهبان (Policy Engine) پیش از باز شدن هر کشو بررسی می‌کند** که چه کسی، از طرف چه کسی و در کدام مرحله می‌خواهد آن را باز کند. هوش مصنوعی نمی‌تواند نگهبان را قانع کند.
+- **ERPNext دفتر رسمی و حسابدار شرکت است.** فقط آنچه آنجا ثبت شود واقعی است و محاسبات را خودش انجام می‌دهد.
+- **Karyar میز کار هوشمند است.** ایجنت‌ها با مشتری و کارکنان حرف می‌زنند، پیش‌نویس آماده می‌کنند و تغییر پیشنهاد می‌دهند.
+- **انسان در Workspace گفت‌وگو می‌کند، تأیید می‌کند و کار را هدایت می‌کند.** فقط بعد از تأیید (یا Policy مصوب) و فقط از دروازه Promote، سند در ERPNext ثبت می‌شود.
+- **n8n زنگ مرحله بعد را می‌زند و پیامک‌ها را می‌فرستد**، ولی تصمیم نمی‌گیرد.
 
 ## ۳۴.۳ نمودار اصلی
 
-بخش ۳ را ببینید. نسخه فشرده:
-
-<pre class="ltr">
- Users / Customers / Employees
-   │  Web · Telegram/Bale · WhatsApp · Instagram · Voice(later) · Karyar Workspace
-   ▼
- Channel Gateway ──► Conversation ──► Event Bus (Outbox+RQ) ◄── ERPNext doc_events
-                                        │
-                     ┌──────────────────┴──────────────────┐
-                     ▼                                     ▼
-              Workflow Engine  ◄──── Human Task (conversational, hash-bound decisions)
-                     │ assigns step → Responsibility → Agent
-                     ▼
-               Agent Runtime ──► AI Gateway ──► Providers (intl / local / self-hosted)
-                     │                 └► UsageRecord (cost extension point)
-                     ▼
-     Tool Executor + Policy Engine (Tenant ∩ Agent ∩ Step ∩ Frappe perms)
-                     │                     ▲
-                     ▼                     │ Karyar API v1 (n8n, apps, MCP later)
-        ERPNext / HRMS / karyar_iran  (SOURCE OF TRUTH, one site per tenant)
-                     │
-           MariaDB · Redis · Files          ⟂ Audit Log · Traces · Metrics (cross-cutting)
-</pre>
+بخش ۳ را ببینید.
 
 ## ۳۴.۴ ساختار مخازن
 
-بخش ۲۳ را ببینید. خلاصه: `karyar-mainERP` (fork روی v16 و فقط آینه)، `karyar`، `karyar_iran`، `karyar-deploy`، و بعدها `karyar_hr_ir` و `karyar-rpa-worker`.
+بخش ۲۳ را ببینید.
 
-## ۳۴.۵ اجزای اصلی و مسئولیت‌ها
+## ۳۴.۵ ریسک‌های بزرگ
 
-| جزء | مسئولیت در یک جمله |
-|---|---|
-| Channel Gateway | هر کانال را به پیام استاندارد تبدیل می‌کند و مخاطب را می‌شناسد |
-| Conversation | تاریخچه گفت‌وگو و اتصال آن به پرونده |
-| Workflow Engine | پرونده را طبق تعریف نسخه‌دار، پایدار و idempotent جلو می‌برد |
-| Agent Runtime | یک نوبت هوشمند را با ابزارهای مجاز و خروجی معتبر اجرا می‌کند |
-| Human Task | تعامل و تأیید انسانی، گفت‌وگومحور و ثبت‌شده |
-| Capability & Tool Registry | فهرست بسته و تایپ‌شده کارهایی که ایجنت می‌تواند بکند |
-| Policy Engine + Tool Executor | تنها دروازه اجرا: مجوز، ریسک، idempotency، فیلتر خروجی، ممیزی |
-| Event Bus | رویداد مطمئن از ERPNext و Karyar به گردش‌کارها |
-| Karyar API v1 | قرارداد پایدار برای دنیای بیرون |
-| AI Gateway | انتزاع ارائه‌دهنده و مدل، و ثبت مصرف |
-| Audit & Telemetry | چه کسی، چه کاری، به اجازه چه کسی، روی کدام سند، و چرا شکست خورد |
-| Karyar Workspace | میز کار کارکنان: صندوق کار، گفت‌وگو، پرونده‌ها |
-| karyar_iran | فارسی، جلالی، اعتبارسنج‌ها، حسابداری و مالیات، مودیان |
-| n8n / RPA | اتصال به بیرون، بدون منطق اصلی کسب‌وکار |
+R1 (AI در ایران)، R2 (کانال‌ها)، R6 و R8 (برداشت اشتباه و افزایش اختیار)، R5 (هزینه n8n)، R11 (Prompt Injection).
 
-## ۳۴.۶ بزرگ‌ترین ریسک‌ها
+## ۳۴.۶ نقشه راه
 
-1. **دسترسی و قانونی بودن ارائه‌دهندگان AI از ایران**، و ارسال داده حساس به بیرون.
-2. **دسترسی کانال‌ها در ایران** (فیلتر، و API رسمی Meta).
-3. **دامنه موتور گردش‌کار:** خطر ساختن یک BPMN کامل به‌جای یک هسته کوچک.
-4. **تأیید گفت‌وگومحور و Prompt Injection.**
-5. **هزینه AI** بدون سقف سخت.
-
-جزئیات در بخش ۲۸ آمده است.
-
-## ۳۴.۷ تصمیم‌هایی که قبل از پیاده‌سازی باید بگیرید
-
-بخش ۲۹ را ببینید. پنج مورد فوری:
-
-1. **v16** به‌عنوان پایه
-2. **محل میزبانی و سیاست داده**
-3. **ارائه‌دهنده یا ارائه‌دهندگان AI**
-4. **صنعت و مشتری پایلوت**
-5. **کانال‌های نسخه اول**
-
-## ۳۴.۸ بخش‌هایی که عمداً منعطف می‌مانند
-
-بخش ۳۰ را ببینید: سازنده گرافیکی، حافظه، مدیریت هزینه، صوت، MCP، تأیید موازی، RPA، مودیان، مشاهده‌پذیری کامل، اجراکننده Temporal و PostgreSQL.
-
-## ۳۴.۹ نقشه راه پیاده‌سازی (از مخزن فعلی تا اولین مشتری)
-
-> زمان‌ها **تقریبی** و برای تیم ۲ تا ۳ نفره توسعه‌دهنده آشنا با Python هستند. بعد از تصمیم‌های بخش ۲۹ دقیق‌تر می‌شوند.
+> زمان‌ها **تقریبی** و برای تیم ۲ تا ۳ نفره است.
 
 | فاز | محتوا | معیار خروج |
 |---|---|---|
-| **۰. پایه‌گذاری** (حدود ۱ تا ۲ هفته) | تصمیم‌های فوری. انتقال fork به `version-16`. ساخت مخازن `karyar` و `karyar-deploy`. bench توسعه با Docker (v16 و HRMS). CI شامل ruff، تست‌ها، و قانون semgrep «ممنوعیت `ignore_permissions` و `get_all` و `db.sql` در ابزارها». پوشه ADR (ثبت تصمیم‌ها) | اپ خالی `karyar` روی سایت v16 نصب می‌شود و CI سبز است |
-| **۱. هسته سکو** (حدود ۴ تا ۶ هفته) | DocTypeهای اصلی (ایجنت، نقش کاری، توانمندی، انتساب، تعریف و اجرای گردش‌کار، گام، Human Task، رویداد، Audit، AI Usage، گفت‌وگو). رجیستری، اجراکننده ابزار و Policy. Outbox و Dispatcher. AI Gateway با یک ارائه‌دهنده سازگار با OpenAI، UsageRecord و سقف سخت. Agent Runtime محدود. موتور گردش‌کار با گام‌های `trigger`، `agent_task`، `human_task`، `condition`، `validate`، `erp_action`، `wait_event`، `notify` و `end`. API v1 حداقلی. ویجت وب. Workspace نسخه ۰ (صندوق کار و گفت‌وگو) | یک گردش‌کار نمونه سرتاسری اجرا می‌شود و **تست‌های مجوز** (از جمله مثال ۶) پاس می‌شوند |
-| **۲. جریان پایلوت** (حدود ۴ تا ۶ هفته) | Pack نسخه ۱ برای صنعت پایلوت. مثال ۱ (Ava، بازبینی، Lead، Hanna) روی وب و یک پیام‌رسان (بله یا تلگرام). مبانی `karyar_iran` (نرمال‌سازی، اعتبارسنج‌ها، نمایش جلالی، `parse_persian_date`). HITL گفت‌وگومحور با سطوح تأیید. Report Catalog با ۵ تا ۱۰ گزارش. n8n برای پیامک | پایلوت داخلی با مشتریان شبیه‌سازی‌شده، و بازبینی امنیتی زنجیره مجوز |
-| **۳. جریان مالی و استحکام** (حدود ۴ تا ۶ هفته) | مثال ۲ (Arman) با تأیید `strong`. تایمر و escalation. داشبورد پرونده‌های گیرکرده. پشتیبان‌گیری و تمرین بازیابی. تست بار صف ایجنت. محیط staging. اسکریپت راه‌اندازی Tenant. قالب‌های چاپ فارسی و قالب مالیات | چک‌لیست راه‌اندازی تکمیل شده است |
-| **۴. اولین مشتری** | راه‌اندازی با Pack به‌علاوه ۲۰٪ پیکربندی اختصاصی. پشتیبانی فشرده ۲ تا ۴ هفته. اندازه‌گیری هزینه AI برای هر پرونده، زمان تأییدها و خطاها | مشتری در حال استفاده و متریک‌ها جمع‌آوری می‌شوند |
-| **بعد** | مودیان، چارت حساب ایرانی، سازنده گرافیکی، تأیید موازی، RPA، Control Plane، مدیریت هزینه، حافظه، صوت، MCP | به ترتیب نیاز بازار |
-
-**قدم بعدی پیشنهادی:** پاسخ به پنج تصمیم فوری (۳۴.۷). بعد از آن، فاز ۰ را با یک PR کوچک شروع می‌کنیم: انتقال پایه به v16 و اسکلت مخزن `karyar`.
+| **۰. پایه** (۱ تا ۲ هفته) | پاسخ به تصمیم‌های باز فوری (§۲۹: ۱ تا ۵). انتقال fork به `version-16`. ساخت `karyar` و `karyar-deploy`. bench توسعه (v16 و HRMS). n8n برای Tenant توسعه. CI با semgrep | اپ خالی نصب می‌شود و CI سبز است |
+| **۱. هسته** (۶ تا ۸ هفته) | DocTypeهای §۲۳. زنجیره مجوز و Tool Executor. AI Gateway با UsageRecord و سقف سخت. Agent Runtime. Channel Gateway (وب و بله). Case و پیش‌ثبت و نسخه‌ها. Change Proposal. **Approval یکپارچه**. Agent Task و Delegation Policy. Promote به‌همراه spike پیش‌نمایش. API v1. `emit_event` و Webhookهای Frappe. Workspace نسخه ۰ (گفت‌وگو و پنل). `Contact Channel`. مبانی `karyar_iran` | گردش نمونه سرتاسری؛ تست‌های مجوز، واگذاری و Approval پاس می‌شوند |
+| **۲. پایلوت** (۴ تا ۶ هفته) | Pack صنعت پایلوت. مثال ۱ سرتاسری. ۳ تا ۵ Workflow در n8n. Report Catalog. پیامک | پایلوت داخلی و بازبینی امنیتی |
+| **۳. مالی و استحکام** (۴ تا ۶ هفته) | مثال ۲ (Approval ترتیبی و `strong`). داشبورد پرونده‌های بی‌حرکت. پشتیبان‌گیری و بازیابی. تست بار. staging. Print Formatهای فارسی | چک‌لیست راه‌اندازی |
+| **۴. اولین مشتری** | Pack به‌همراه ۲۰٪ پیکربندی. پشتیبانی فشرده. اندازه‌گیری هزینه و زمان‌ها | مشتری فعال |
+| **بعد** | §۳۰ | به ترتیب نیاز |
 
 ---
 
-<p class="endnote">این سند پیش‌نویس است و برای بازبینی و تکرار مشترک تهیه شده است. منابع اصلی: بررسی مستقیم کد این مخزن و کد Frappe و ERPNext نسخه ۱۶ در GitHub، مستندات n8n، issue شماره 56241 ‏(PostgreSQL) در frappe/erpnext، مخزن frappe/mcp، و بررسی گزارش قبلی همین گفت‌وگو.</p>
+<p class="endnote">نسخه ۱٫۰ — جایگزین نسخه ۰٫۱ و همه تغییرات ثبت‌شده در PENDING_CHANGES (CR-01 تا CR-04). منابع: بررسی مستقیم کد این مخزن و کد Frappe و ERPNext نسخه ۱۶، مستندات n8n، issue شماره 56241 در frappe/erpnext، مخزن frappe/mcp.</p>
