@@ -1,9 +1,15 @@
 <div class="cover">
 <h1 class="title">معماری Karyar</h1>
 <p class="subtitle">ERPNext + Karyar Agent Platform</p>
-<p class="meta">سند معماری — نسخه ۱٫۰ (بازبینی و به‌روزرسانی نهایی) — مهر ۱۴۰۵ / اکتبر ۲۰۲۶</p>
-<p class="meta">این نسخه همه تصمیم‌های CR-01 تا CR-04 و تصمیم‌های قطعی بازبینی نهایی را یکپارچه کرده است.</p>
+<p class="meta">سند معماری — نسخه ۱٫۱ (Revision 1.1) — ۹ مهر ۱۴۰۵ / ۱ اکتبر ۲۰۲۶</p>
+<p class="meta">نسخه ۱٫۰ به‌علاوه چهار اصلاح نهایی: ERPNext موتور منطق کسب‌وکار؛ مرز Draft؛ Idempotency؛ n8n مشترک و Tenant-aware.</p>
 </div>
+
+| نسخه | تاریخ | تغییر |
+|---|---|---|
+| ۰٫۱ | مهر ۱۴۰۵ | پیش‌نویس اولیه |
+| ۱٫۰ | مهر ۱۴۰۵ | یکپارچه‌سازی CR-01 تا CR-04 و بازبینی نهایی |
+| **۱٫۱** | **۹ مهر ۱۴۰۵** | **(۱) ERPNext موتور منطق کسب‌وکار و مسیر عملیات نهایی؛ (۲) Draft «ERP دوم» نیست؛ (۳) Idempotency به‌عنوان الزام معماری؛ (۴) n8n مشترک و Tenant-aware به‌صورت پیش‌فرض، و اختصاصی فقط در صورت نیاز** |
 
 ## فهرست
 
@@ -30,11 +36,21 @@ Karyar یک پلتفرم **ERP + AI Agents** است.
 - کنترل، مجوز، ممیزی و ثبت مصرف AI
 - نگهداری وضعیت فرایند
 
-**n8n فقط هماهنگی گام‌ها (Orchestration) و اجرای Integrationها را انجام می‌دهد.** هر تصمیم کسب‌وکاری، مجوز و عملیات نهایی از Karyar می‌گذرد و در نهایت با منطق استاندارد خود ERPNext ثبت می‌شود.
+**n8n فقط هماهنگی گام‌ها (Orchestration) و اجرای Integrationها را انجام می‌دهد.** حالت پیش‌فرض آن یک نمونه **مشترک و Tenant-aware** است. هر تصمیم کسب‌وکاری، مجوز و عملیات نهایی از Karyar می‌گذرد و در نهایت با منطق استاندارد خود ERPNext ثبت می‌شود.
 
 **اصل راهنمای کل سند:**
 
 > هر کاری که ERPNext به‌صورت امن، استاندارد و قابل اتکا انجام می‌دهد، به ERPNext سپرده می‌شود. Karyar فقط در جایی منطق اضافه می‌کند که برای Agent، AI یا کنترل واقعاً لازم است.
+
+**مسیر هر عملیات نهایی:**
+
+<pre class="ltr">
+Karyar: Permission → Policy → Approval → Idempotency
+        → ERPNext API (document API / whitelisted methods)
+        → ERPNext: Validation → Calculation → Posting (GL / Stock Ledger) → Final record
+</pre>
+
+**Karyar اعتبارسنجی، محاسبه، Posting، منطق انبار و حسابداری، و هیچ منطق استاندارد ERP دیگری را بازنویسی نمی‌کند.**
 
 ## ۰.۲ وضعیت فعلی مخزن
 
@@ -49,7 +65,7 @@ Karyar یک پلتفرم **ERP + AI Agents** است.
 **نقاط توسعه استانداردی که Karyar از آن‌ها استفاده می‌کند:**
 
 - `doc_events`
-- DocType ‏Webhook با امضای HMAC
+- DocType ‏Webhook با امضای HMAC (برای سیستم‌های بیرونی غیر از n8n)
 - `scheduler_events` و صف‌های سفارشی RQ
 - `frappe.db.after_commit`
 - `has_permission`، `permission_query_conditions`، User Permission و permlevel
@@ -79,9 +95,13 @@ Karyar یک پلتفرم **ERP + AI Agents** است.
 
 | حوزه | تصمیم |
 |---|---|
-| نقش ERPNext | موتور اصلی منطق و داده کسب‌وکار و منبع نهایی حقیقت. **ERPNext-first:** هرجا قابلیت استاندارد دارد، همان استفاده می‌شود |
-| نقش Karyar | ایجنت، گفت‌وگو، Workspace انسانی، کنترل، مجوز، ممیزی، مصرف AI، و وضعیت فرایند |
+| نقش ERPNext | **منبع اصلی Business Logic و Business Truth.** اعتبارسنجی، محاسبه، Posting، منطق انبار و حسابداری، و ثبت نهایی فقط در ERPNext انجام می‌شود. **ERPNext-first:** هرجا قابلیت استاندارد دارد، همان استفاده می‌شود |
+| نقش Karyar | لایه هوشمند و کنترل‌گر: ایجنت، رابط انسان و ایجنت (Workspace)، گفت‌وگو، مجوز و تأیید، هماهنگی، وضعیت فرایند، ممیزی و مصرف AI. **هیچ منطق استاندارد ERP را بازنویسی نمی‌کند** |
+| مسیر عملیات نهایی | Karyar (مجوز، Policy، تأیید، Idempotency) ← ERPNext API ← اعتبارسنجی، محاسبه و Posting در ERPNext |
+| Draft در Karyar | **ERP دوم نیست.** فقط داده معلق، دلتا، وضعیت فرایند و Context گفت‌وگو. کپی کامل اسناد پایه یا کسب‌وکاری ممنوع است |
+| Idempotency | **الزام معماری** برای عملیات حساس و قابل تکرار. کلید Tenant-aware. Retry باعث تکرار عملیات نمی‌شود |
 | نقش n8n | **فقط** هماهنگی گام‌ها و اجرای Automation و Integration |
+| استقرار n8n | **مشترک و Tenant-aware به‌صورت پیش‌فرض.** n8n اختصاصی فقط برای نیاز واقعی به جداسازی، امنیت، انطباق یا Integration سفارشی |
 | در کنترل Karyar | گفت‌وگوی زنده، اجرای ایجنت، تصمیم کسب‌وکاری، مجوز، Human Task، عملیات نهایی |
 | Human Task | Workspace مشترک انسان و ایجنت. مبتنی بر گفت‌وگو. انسان می‌تواند تغییر دهد، Pause/Resume کند، واگذار کند، جلو/عقب ببرد و از ایجنت‌های دیگر کمک بگیرد |
 | تغییرهای حساس | **پیشنهاد تغییر (Change Proposal) با Diff**؛ ثبت فقط پس از تأیید صریح انسان |
@@ -126,27 +146,27 @@ Karyar از **چهار لایه** و یک **لایه عمودی** ساخته م�
    - Karyar API v1
    - انتشار رویداد
    - درگاه AI (AI Gateway)
-4. **لایه داده و منطق کسب‌وکار:** ERPNext، HRMS و `karyar_iran` روی Frappe. این لایه **منبع نهایی حقیقت** است.
+4. **لایه داده و منطق کسب‌وکار:** ERPNext، HRMS و `karyar_iran` روی Frappe. این لایه **منبع نهایی حقیقت و تنها محل منطق کسب‌وکار** است: اعتبارسنجی، محاسبه و Posting.
 
 - **لایه عمودی:** ممیزی، نسخه‌داری، مصرف AI و اسرار.
 - **بیرون از هسته:**
-  - **n8n**: ترتیب مراحل فرایند، و اجرای Integrationها (پیامک انبوه، APIهای بیرونی، و در آینده RPA)
+  - **n8n** (مشترک و Tenant-aware؛ اختصاصی در صورت نیاز): ترتیب مراحل فرایند، و اجرای Integrationها (پیامک انبوه، APIهای بیرونی، و در آینده RPA)
   - ارائه‌دهندگان AI
   - سرویس‌های بیرونی
 
 **تقسیم کار در یک جمله:**
 
-- **ERPNext** کسب‌وکار را ثبت و محاسبه می‌کند.
-- **Karyar** می‌فهمد، کنترل می‌کند، پیشنهاد می‌دهد و پس از تصمیم انسان (یا Policy مصوب) اجرا می‌کند.
+- **ERPNext** کسب‌وکار را اعتبارسنجی، محاسبه، Post و ثبت می‌کند.
+- **Karyar** می‌فهمد، کنترل می‌کند و پیشنهاد می‌دهد. پس از تصمیم انسان (یا Policy مصوب)، **درخواست کنترل‌شده را به ERPNext می‌دهد**؛ خودش محاسبه یا Post نمی‌کند.
 - **n8n** ترتیب گام‌ها را جلو می‌برد و Integrationها را اجرا می‌کند.
 
 # ۲. اصول بنیادین
 
 | # | اصل | پیامد فنی |
 |---|---|---|
-| P1 | ERPNext منبع نهایی حقیقت و موتور منطق کسب‌وکار است | محاسبه، اعتبارسنجی و ثبت با کنترلرهای ERPNext انجام می‌شود |
+| P1 | ERPNext منبع اصلی Business Logic و Business Truth است | اعتبارسنجی، محاسبه، Posting، و منطق انبار و حسابداری **فقط** در ERPNext انجام می‌شود. Karyar این‌ها را بازنویسی نمی‌کند. مسیر: مجوز، Policy و تأیید در Karyar ← ERPNext API ← اعتبارسنجی، محاسبه و Posting در ERPNext |
 | P2 | **ERPNext-first** | منطق موازی ساخته نمی‌شود. اگر ERPNext قابلیت استاندارد دارد، Karyar از همان استفاده می‌کند (بخش ۱۲.۱) |
-| P3 | Karyar ERP دوم نیست | Karyar فقط پیش‌ثبت، Context، فرایند و ممیزی نگه می‌دارد |
+| P3 | Karyar و Draft آن ERP دوم نیستند | Draft فقط داده معلق، دلتا، وضعیت فرایند و Context است. کپی کامل Customer، Lead، Invoice، Order و غیره ممنوع است (بخش ۱۲.۲) |
 | P4 | بدون دسترسی خام به پایگاه داده یا SQL دلخواه | فقط ابزارهای تایپ‌شده و ثبت‌شده، و گزارش‌های فهرست‌شده |
 | P5 | مجوز در کد اعمال می‌شود، نه در Prompt | زنجیره مجوز (بخش ۱۱). Prompt نه مجوز می‌سازد، نه تأیید |
 | P6 | مفاهیم از هم جدا هستند: ایجنت، نقش کاری (Responsibility)، توانمندی (Capability)، مجوز و گردش‌کار | گام فرایند به نقش کاری اشاره می‌کند، نه به ایجنت مشخص |
@@ -158,9 +178,10 @@ Karyar از **چهار لایه** و یک **لایه عمودی** ساخته م�
 | P12 | n8n فقط هماهنگی و اجراست | n8n مجوز، تصمیم، وضعیت پرونده و داده پیش‌ثبت ندارد |
 | P13 | مستقل از ارائه‌دهنده AI | AI Gateway با نام مستعار مدل (alias) |
 | P14 | همه‌چیز قابل ردیابی است | `correlation_id`، Audit Log معنایی، نسخه‌ها |
-| P15 | Tenant مرز جداسازی است | سایت و پایگاه داده جدا، Credential جدا، n8n و Integrationهای Tenant-aware |
+| P15 | Tenant مرز جداسازی است | سایت و پایگاه داده جدا، و Credential جدا. n8n مشترک ولی Tenant-aware: بدون Credential بلندمدت Tenantها، و با token محدود به رویداد (بخش ۱۷) |
 | P16 | هسته ERPNext دست‌نخورده می‌ماند | Hook، Custom Field، اپ جدا. وصله ضروری مستند می‌شود |
 | P17 | ساده شروع کن، درست مرز بکش | یک اپ Frappe با ماژول‌ها. سرویس جدا فقط هنگام نیاز |
+| P18 | **Idempotency اجباری** | هر عملیات حساس و قابل تکرار کلید Tenant-aware دارد. Retry هرگز سند، پیام یا عملیات مالی تکراری نمی‌سازد (بخش ۱۲.۵) |
 
 # ۳. نمودار معماری سیستم
 
@@ -186,17 +207,17 @@ Karyar از **چهار لایه** و یک **لایه عمودی** ساخته م�
   </div>
   <div class="arch-side">
     <div class="side s-audit"><div class="lname">عمودی</div><span>Audit Log</span><span>نسخه‌های پیش‌ثبت</span><span>AI Usage</span><span>correlation_id</span><span>مدیریت اسرار</span></div>
-    <div class="side s-ext"><div class="lname">بیرون از هسته</div><span>n8n (برای هر Tenant): هماهنگی گام‌ها و اجرای Integration</span><span>RPA Worker (آینده، فقط بدون API)</span><span>ارائه‌دهندگان AI</span><span>APIهای بیرونی (پیامک، مودیان، بانک)</span></div>
+    <div class="side s-ext"><div class="lname">بیرون از هسته</div><span>n8n مشترک و Tenant-aware (اختصاصی فقط در صورت نیاز): هماهنگی گام‌ها و اجرای Integration</span><span>RPA Worker (آینده، فقط بدون API)</span><span>ارائه‌دهندگان AI</span><span>APIهای بیرونی (پیامک، مودیان، بانک)</span></div>
   </div>
 </div>
 
 **جهت جریان:**
 
 - **مشتری ← Karyar:** مشتری با ایجنت در Karyar گفت‌وگو می‌کند. Karyar داده را به‌صورت **پیش‌ثبت** در Case نگه می‌دارد.
-- **Karyar ← n8n:** نقطه‌های عطف فرایند به‌صورت رویداد به n8n می‌رسند.
-- **n8n ← Karyar API:** ‏n8n با Karyar API ‏Human Task می‌سازد، ایجنت را فرا می‌خواند یا Promote را درخواست می‌کند.
-- **Karyar ← ERPNext:** ‏Karyar پس از بررسی مجوز و تأیید، سند را با منطق خود ERPNext ثبت می‌کند.
-- **ERPNext ← n8n:** رویدادهای ERPNext (Webhook استاندارد Frappe) دوباره به n8n می‌روند تا مرحله بعد شروع شود.
+- **Karyar ← n8n:** نقطه‌های عطف فرایند به‌صورت رویداد امضاشده به n8n می‌رسند، همراه با یک token کوتاه‌مدت و محدود به همان رویداد.
+- **n8n ← Karyar API:** ‏n8n با همان token در Karyar API ‏Human Task می‌سازد، ایجنت را فرا می‌خواند یا Promote را درخواست می‌کند.
+- **Karyar ← ERPNext:** ‏Karyar پس از بررسی مجوز، تأیید و Idempotency، درخواست کنترل‌شده را به **ERPNext API** می‌دهد. ERPNext خودش اعتبارسنجی، محاسبه و Posting را انجام می‌دهد.
+- **ERPNext ← n8n:** رویدادهای ERPNext از طریق `doc_events` در اپ Karyar و `emit_event` (همراه با token) دوباره به n8n می‌روند تا مرحله بعد شروع شود.
 
 # ۴. معماری اجزا
 
@@ -205,19 +226,20 @@ Karyar از **چهار لایه** و یک **لایه عمودی** ساخته م�
 | **Channel Gateway** | گفت‌وگوی زنده، Adapter کانال‌ها، شناسایی مخاطب از `Contact Channel` | ERPNext چت زنده و ایجنت ندارد | ۱ |
 | **Conversation** | پیام‌ها و خلاصه تعامل. خلاصه پس از اتصال به مخاطب در Timeline خود ERPNext ثبت می‌شود | Context ایجنت. تاریخچه رسمی در ERPNext (`Communication`) | ۱ |
 | **Agent Runtime** | اجرای یک نوبت ایجنت: Context، مدل، ابزارها، اعتبارسنجی خروجی | مخصوص AI | ۱ |
-| **Karyar Case** | پرونده: مرحله، پیش‌ثبت (Draft) و نسخه‌های آن، ارجاع به اسناد ERPNext | پیش‌ثبتِ قبل از وجود سند ERPNext | ۱ |
+| **Karyar Case** | پرونده: مرحله، پیش‌ثبت (Draft: فقط داده معلق و دلتا) و نسخه‌های آن، ارجاع به اسناد ERPNext | پیش‌ثبتِ قبل از وجود سند ERPNext. **کپی اسناد ERPNext نیست** | ۱ |
 | **Human Task Workspace** | فضای مشترک انسان و ایجنت: گفت‌وگو، پنل، اقدام‌ها | Frappe Workflow پیش از وجود سند و به‌صورت گفت‌وگویی کار نمی‌کند. **تخصیص و اعلان از `ToDo` و Notification استاندارد Frappe** | ۱ |
 | **Change Proposal** | پیشنهاد تغییر با Diff و تأیید صریح | کنترل AI | ۱ |
 | **Approval Request** | تأیید تک‌نفره، چندنفره، M از N، ترتیبی، موازی، و گره خوردن به hash | Frappe Workflow ‏M از N و hash ندارد و پیش از سند کار نمی‌کند | ۱ |
 | **Agent Task** | واگذاری بین ایجنت‌ها و به Integrationها، و پیگیری آن | کنترل AI | ۱ |
 | **Policy / Permission Engine** | زنجیره مجوز، Approval Policy، Auto-Execution Policy، Delegation Policy | کنترل AI. **در انتها به مجوز Frappe ختم می‌شود** | ۱ |
 | **Tool Executor + Registry** | تنها مسیر اجرای ابزار: بررسی مجوز، idempotency، فیلتر خروجی، ممیزی | کنترل AI | ۱ |
-| **Promote** | تنها مسیر ثبت نهایی در ERPNext با کنترلرهای ERPNext | دروازه کنترل | ۱ |
+| **Promote** | تنها مسیر ثبت نهایی: مجوز، تأیید و Idempotency، سپس **ERPNext API**. اعتبارسنجی، محاسبه و Posting با ERPNext | دروازه کنترل؛ **بدون منطق کسب‌وکار** | ۱ |
+| **Idempotency Registry** | ثبت کلیدهای Tenant-aware عملیات حساس و نتیجه آن‌ها | جلوگیری از عملیات تکراری در Retry | ۱ |
 | **Karyar API v1** | API پایدار برای n8n، Workspace و اپ‌ها | جدا کردن مصرف‌کننده‌ها از جزئیات ERPNext | ۱ |
-| **emit_event** | انتشار رویدادهای Karyar به n8n پس از commit. رویدادهای ERPNext با Webhook استاندارد Frappe | سبک؛ Outbox اختصاصی موکول به آینده | ۱ |
+| **emit_event** | انتشار رویدادهای Karyar و رویدادهای ERPNext (از طریق `doc_events`) به n8n پس از commit، همراه با امضا و token محدود به همان رویداد | سبک؛ Outbox اختصاصی موکول به آینده | ۱ |
 | **AI Gateway** | انتزاع ارائه‌دهنده و ثبت مصرف و هزینه | مخصوص AI | ۱ (به‌صورت کتابخانه) |
 | **Audit** | ممیزی معنایی (چه کسی، از طرف چه کسی، چه پیشنهادی، چه تأییدی). تغییرات میدانی اسناد ERPNext با `Version` استاندارد | مکمل `Version`، نه تکرار آن | ۱ |
-| **n8n** | ترتیب مراحل فرایند و اجرای Integration | — | ۱ |
+| **n8n** | ترتیب مراحل فرایند و اجرای Integration. مشترک و Tenant-aware به‌صورت پیش‌فرض | — | ۱ |
 | **RPA Worker** | سیستم‌های بدون API | — | آینده |
 | **Control Plane** | ثبت Tenant، راه‌اندازی، تجمیع مصرف | — | آینده (ابتدا با اسکریپت) |
 
@@ -308,14 +330,14 @@ Karyar Pack (versioned, e.g. "clinic-basic@1.0.0")
 
 در فاز ۱، **Workflow Engine اختصاصی ساخته نمی‌شود.** ترتیب و مسیر مراحل فرایند در **n8n خودمیزبان** ساخته و اجرا می‌شود.
 
-**اصل:** «n8n ترتیب کارها را تعیین می‌کند. Karyar تصمیم می‌گیرد، کنترل می‌کند و اجرا می‌کند. ERPNext ثبت می‌کند.»
+**اصل:** «n8n ترتیب کارها را تعیین می‌کند. Karyar تصمیم می‌گیرد، کنترل می‌کند و درخواست را به ERPNext می‌دهد. ERPNext اعتبارسنجی، محاسبه، Post و ثبت می‌کند.»
 
 ## ۷.۲ مرز مسئولیت
 
 | n8n | Karyar | ERPNext |
 |---|---|---|
-| Trigger (رویداد Webhook، Cron) | گفت‌وگوی زنده و اجرای ایجنت | منطق، محاسبه و اعتبارسنجی کسب‌وکار |
-| ترتیب، انشعاب و مسیر بین مراحل | Human Task، Change Proposal، Approval | ثبت نهایی و وضعیت سند |
+| اجرای Workflow با رویدادی که Karyar می‌فرستد (شامل رویدادهای زمان‌بندی‌شده از Scheduler خود Frappe) | گفت‌وگوی زنده و اجرای ایجنت | منطق، محاسبه، اعتبارسنجی و Posting کسب‌وکار |
+| ترتیب، انشعاب و مسیر بین مراحل | Human Task، Change Proposal، Approval، Idempotency | ثبت نهایی و وضعیت سند |
 | فراخوانی Karyar API | مجوز، Policy، Promote | گزارش‌های استاندارد |
 | اجرای Integration (پیامک انبوه، APIهای بیرونی، RPA در آینده) | وضعیت پرونده (`Karyar Case`) و پیش‌ثبت | `Version`، `Communication`، `ToDo` |
 | retry فراخوانی بیرونی و Error Workflow | ممیزی و مصرف AI | — |
@@ -330,11 +352,14 @@ Karyar Pack (versioned, e.g. "clinic-basic@1.0.0")
 6. n8n **پیش‌ثبت، مجوز و داده کسب‌وکاری نگه نمی‌دارد.** فقط `case_id` و حداقل فیلدها را منتقل می‌کند. ذخیره داده اجرای جریان‌های حساس خاموش است و داده‌های اجرا به‌صورت خودکار حذف می‌شوند (pruning).
 7. **`case_id` و `correlation_id` در همه فراخوانی‌ها منتقل می‌شوند.** شناسه execution در n8n روی Case ثبت می‌شود.
 8. **Karyar API برای پرونده‌های `paused` و `cancelled` هر اقدام و Promote را رد می‌کند.** پس ادامه اشتباهی یک Workflow اثری در ERPNext ندارد.
+9. **هر فراخوانی تغییردهنده از n8n یک `idempotency_key` دارد** (بخش ۱۲.۵). retry در n8n عملیات را تکرار نمی‌کند.
+10. **n8n هیچ Credential بلندمدت Tenant یا trigger مستقل روی داده Tenant ندارد.** همه Workflowها با رویدادی از Karyar شروع می‌شوند که یک token محدود و کوتاه‌مدت دارد (بخش ۱۷).
 
 ## ۷.۴ نگهداری و انتقال‌پذیری
 
 - **export:** هر Workflow به JSON در `karyar-deploy/n8n/workflows/` منتقل می‌شود، همراه با یک `README` (Trigger، گام‌ها و endpointها). اعتبارنامه‌ها در git نیستند.
-- **محیط‌ها:** n8n جدا برای test و production. نام‌گذاری: `KY | <process> | <segment>`.
+- **محیط‌ها:** n8n جدا برای test و production. نام‌گذاری: `KY | <process> | <segment> | v<n>`. نسخه‌های مختلف می‌توانند کنار هم وجود داشته باشند و هر Pack به نسخه مشخصی ارجاع می‌دهد.
+- **Workflowهای n8n مشترک عمومی‌اند و پارامتر Tenant می‌گیرند.** Workflow مخصوص یک Tenant فقط در n8n اختصاصی همان Tenant ساخته می‌شود (بخش ۱۷).
 - **انتقال‌پذیری:** چون منطق، وضعیت و مجوز در Karyar است، انتقال در آینده به موتور داخلی یعنی بازنویسی **ترتیب** از روی READMEها، نه بازسازی Karyar.
 
 ## ۷.۵ Frappe Workflow
@@ -467,14 +492,28 @@ Approval Policy (per operation / workflow, versioned)
 
 | منبع | سازوکار (فاز ۱) |
 |---|---|
-| ERPNext | **DocType ‏Webhook استاندارد Frappe** (شرط‌گذاری، امضای HMAC و لاگ) به n8n. مثال: `erp.lead.created` و `erp.sales_order.submitted` |
+| ERPNext | `doc_events` استاندارد Frappe در اپ Karyar، برای DocTypeهای مشخص‌شده، سپس `emit_event` پس از commit به n8n. مثال: `erp.lead.created` و `erp.sales_order.submitted` |
 | Karyar | `emit_event()` پس از commit. نمونه‌ها: `intake.completed`، `agent.task.completed`، `human_task.decided`، `approval.completed`، `case.paused`، `case.resumed`، `case.cancelled` |
-| بیرونی | callback از n8n به Karyar API (امضاشده) |
-| زمان | Cron در n8n. Scheduler در Frappe برای نگهداری داده و پاک‌سازی |
+| بیرونی | callback از n8n به Karyar API (با token همان رویداد یا Job) |
+| زمان | **`scheduler_events` استاندارد Frappe در سایت هر Tenant** رویدادهای زمان‌بندی‌شده (مثل `schedule.daily_brief` و `schedule.stale_case_sweep`) را به n8n می‌فرستد. پاک‌سازی و نگهداری داده هم با همین Scheduler انجام می‌شود |
 
-**پوشش رویداد:** `event_id`، `type`، `tenant`، `occurred_at`، `subject` (doctype/name یا case)، `actor`، `correlation_id`، و یک `payload` حداقلی. مصرف‌کننده جزئیات را **با مجوز خودش** از API می‌خواند.
+**پوشش رویداد:**
 
-**قابلیت اطمینان:** Webhook در Frappe و `emit_event` شکست‌ها را لاگ می‌کنند. یک Workflow زمان‌بندی‌شده در n8n «پرونده‌های بی‌حرکت» را از Karyar می‌پرسد. Outbox اختصاصی به آینده موکول شده است.
+- `event_id`، `type`، `tenant`، `occurred_at`، `subject` (doctype/name یا case)، `actor`، `correlation_id`
+- یک `payload` حداقلی
+- **امضای HMAC سکو**
+- **`callback_token`:** کوتاه‌مدت و محدود به همان Tenant، پرونده و endpointهای مجاز
+
+مصرف‌کننده جزئیات را **با مجوز خودش** از API می‌خواند.
+
+**DocType ‏Webhook استاندارد Frappe** همچنان برای اتصال سیستم‌های بیرونی دیگر قابل استفاده است. ولی triggerهای n8n از `emit_event` می‌آیند، چون n8n مشترک باید برای هر رویداد یک token محدود دریافت کند و نباید کلید API بلندمدت Tenantها را نگه دارد.
+
+**قابلیت اطمینان:**
+
+- `emit_event` با retry در RQ اجرا می‌شود و شکست‌ها را لاگ می‌کند.
+- رویداد زمان‌بندی‌شده `schedule.stale_case_sweep` «پرونده‌های بی‌حرکت» را پیدا می‌کند.
+- مصرف‌کننده‌ها با `event_id` و Idempotency تکرار رویداد را بی‌اثر می‌کنند.
+- Outbox اختصاصی به آینده موکول شده است.
 
 # ۱۰. واگذاری و ارتباط ایجنت با ایجنت
 
@@ -502,7 +541,7 @@ Approval Policy (per operation / workflow, versioned)
 - **عدم افزایش اختیار:** اختیار Agent Task برابر است با **اشتراکِ** اختیار Principal اولیه، توانمندی ایجنت واگذارکننده، توانمندی مقصد و Delegation Policy.
 - **محدودیت‌ها:** عمق زنجیره حداکثر ۲ (پیش‌فرض). چرخه ممنوع است.
 - **بازگشت نتیجه:** رویداد `agent.task.completed` منتشر می‌شود. نتیجه در Workspace نمایش داده می‌شود. اگر داده را تغییر دهد، به‌صورت **Change Proposal** به انسان ارائه می‌شود.
-- **Integration Target:** یک فهرست حداقلی شامل نام، Workflow مربوط در n8n، Schema ورودی و خروجی، توانمندی لازم، سیاست تأیید و محدودیت‌های کانال. Karyar آغاز، مجوز و ثبت را انجام می‌دهد و n8n اجرا می‌کند و نتیجه را با callback برمی‌گرداند.
+- **Integration Target:** یک فهرست حداقلی شامل نام، Workflow مربوط در n8n، **نمونه n8n** (مشترک یا اختصاصی)، Schema ورودی و خروجی، توانمندی لازم، سیاست تأیید، محدودیت‌های کانال، و **قاعده Idempotency** (کلید برای هر گیرنده یا هر عملیات). Karyar آغاز، مجوز و ثبت را انجام می‌دهد و n8n اجرا می‌کند و نتیجه را با callback برمی‌گرداند.
 - **Task Brief:** ایجنت مقصد یک دستور کار ساخت‌یافته دریافت می‌کند، نه متن خام گفت‌وگو. این از انتقال Prompt Injection جلوگیری می‌کند و داده کمتری منتقل می‌شود.
 
 # ۱۱. معماری مجوز
@@ -529,7 +568,7 @@ A prompt can never add a permission or an approval.
 | کار فرایندی خودکار | کاربر سرویس ایجنت، محدود به رکوردهای همان پرونده | دسترسی حداقلی |
 | کار واگذارشده | اشتراک اختیار Principal اولیه و همه حلقه‌های زنجیره | بدون افزایش اختیار |
 | مشتری در کانال | Contact Principal با ابزارهایی که فقط داده همان مخاطب را برمی‌گردانند | مشتری فقط داده خودش |
-| n8n | کاربر یکپارچه‌سازی **هر Tenant** با کلید API مجزا و توانمندی‌های محدود | فقط Karyar API |
+| n8n (مشترک یا اختصاصی) | **token کوتاه‌مدت محدود به رویداد یا Job** که سایت همان Tenant صادر کرده است. مقدار token، دامنه آن (پرونده و endpointهای مجاز) و هویت کاربر یکپارچه‌سازی آن Tenant را مشخص می‌کند | فقط Karyar API، فقط برای همان پرونده و همان Tenant |
 
 ## ۱۱.۳ قواعد پیاده‌سازی
 
@@ -541,13 +580,34 @@ A prompt can never add a permission or an approval.
 
 # ۱۲. یکپارچگی با ERPNext (ERPNext-first)
 
+## ۱۲.۰ ERPNext موتور اصلی منطق کسب‌وکار
+
+**ERPNext منبع اصلی Business Logic و Business Truth است.**
+
+| فقط ERPNext انجام می‌دهد | Karyar انجام می‌دهد | Karyar **هرگز** انجام نمی‌دهد |
+|---|---|---|
+| اعتبارسنجی کسب‌وکاری (اجباری بودن فیلدها، اعتبار مشتری، موجودی، قواعد سند) | مجوز، Policy، تأیید، Idempotency، و کامل بودن داده‌های **فرایند** (فیلدهای الزامی Template) | بازنویسی اعتبارسنجی ERPNext |
+| محاسبه (قیمت، تخفیف، مالیات، جمع، ارزش‌گذاری) | نمایش پیش‌نمایش که **خود ERPNext** محاسبه کرده است | محاسبه مالیات، جمع یا قیمت |
+| Posting (ثبت‌های دفتر کل و Stock Ledger) و منطق انبار و حسابداری | درخواست کنترل‌شده ثبت از طریق ERPNext API | ساختن ثبت حسابداری یا انبار، یا نوشتن مستقیم در جدول‌ها |
+| وضعیت سند، لغو و Amend | ارجاع به سند و پیگیری فرایند | نگهداری وضعیت موازیِ سند |
+
+**مسیر عملیات نهایی:**
+
+<pre class="ltr">
+Karyar  Permission → Policy/Approval → Idempotency
+  → ERPNext API: frappe.get_doc(...).insert() / .submit() / make_* / whitelisted methods
+  → ERPNext controllers: validate → calculate → post (GL / SLE) → commit
+</pre>
+
+**«ERPNext API» در این سند** یعنی API اسناد ERPNext (Document API و متدهای whitelisted). Karyar چون روی همان Site است، آن را درون‌فرایندی صدا می‌زند. این مسیر **دقیقاً همان کنترلرها و اعتبارسنجی‌هایی** را اجرا می‌کند که REST API ‏ERPNext اجرا می‌کند. نوشتن مستقیم در پایگاه داده، `db_set` روی فیلدهای کسب‌وکاری، و `ignore_validate` ممنوع است.
+
 ## ۱۲.۱ چه چیزی به ERPNext سپرده می‌شود
 
 | نیاز | قابلیت استاندارد ERPNext/Frappe | کار Karyar |
 |---|---|---|
-| ثبت و اعتبارسنجی اسناد | کنترلرها، `insert` و `submit`، توابع `make_*` | فقط فراخوانی از طریق Promote |
-| محاسبه مالیات، جمع و دفتر کل | `calculate_taxes_and_totals`، پیش‌نمایش دفتر کل (`get_accounting_ledger_preview`) | پیش‌نمایش **بدون ذخیره** و hash |
-| اعتبار مشتری، قیمت، موجودی | Credit Limit، Price List، Projected Qty | خواندن از طریق ابزار؛ بدون قاعده موازی |
+| ثبت و اعتبارسنجی اسناد | کنترلرها، `insert` و `submit`، توابع `make_*` | فقط درخواست از طریق Promote. **اعتبارسنجی با ERPNext** |
+| محاسبه مالیات، جمع و دفتر کل | `calculate_taxes_and_totals`، پیش‌نمایش دفتر کل (`get_accounting_ledger_preview`) | درخواست پیش‌نمایش **بدون ذخیره** از ERPNext و hash نتیجه. **Karyar محاسبه نمی‌کند** |
+| اعتبار مشتری، قیمت، موجودی | Credit Limit، Price List، Projected Qty | خواندن از طریق ابزار. **بدون قاعده موازی.** کنترل Credit Limit را خود ERPNext هنگام ثبت انجام می‌دهد |
 | سفارش مجدد خودکار | Reorder Level و Material Request خودکار | فقط واکنش به رویداد |
 | تاریخچه تغییرات اسناد | `Version` (track changes) | ممیزی **معنایی** مکمل؛ تغییرات میدانی تکرار نمی‌شود |
 | تخصیص و اعلان | `ToDo`، `assign_to`، Assignment Rule، Notification | Human Task به‌جای ساختن سیستم اعلان جدا از این‌ها استفاده می‌کند |
@@ -561,33 +621,44 @@ A prompt can never add a permission or an approval.
 | تأیید اسنادی که در Desk ساخته می‌شوند | Frappe Workflow | دخالت نمی‌کند |
 | نمایش پرونده‌های در جریان در ERPNext | Connections dashboard (`override_doctype_dashboards`) | `Karyar Case` در Connections مشتری، Lead و غیره |
 
-## ۱۲.۲ پیش‌ثبت (Pre-Registration) و Promote
+## ۱۲.۲ مدل Draft در Karyar، و Promote
 
-- **پیش‌فرض:** داده در حال تکمیل و پیش‌نویس‌ها **فقط در Karyar** (`Karyar Case.draft_data`) هستند. **قبل از تأیید هیچ سند کسب‌وکاری در ERPNext ساخته نمی‌شود.**
+**Draft در Karyar یک «ERP دوم» نیست.**
+
+| Draft **فقط** این‌ها را نگه می‌دارد | Draft **هرگز** این‌ها را نگه نمی‌دارد |
+|---|---|
+| داده معلق که هنوز تأیید و Promote نشده است | کپی کامل Customer، Lead، Contact، Item، Supplier یا هر داده پایه دیگر |
+| **دلتا:** فقط فیلدهای جدید یا تغییرکرده، به‌علاوه **ارجاع** (doctype/name) به رکوردهای موجود ERPNext | کپی کامل Quotation، Order، Invoice، Payment، Journal Entry یا هر سند کسب‌وکاری دیگر |
+| وضعیت فرایند (مرحله، نسخه‌ها، تأییدها) | مقادیر محاسبه‌شده توسط Karyar (مالیات، جمع، قیمت یا ارزش) |
+| Context گفت‌وگو (ارجاع به Conversation) | داده‌ای که بعد از Promote به‌عنوان منبع خوانده شود |
+| **پیش‌نمایش ERPNext** (خروجی خود ERPNext، فقط برای نمایش به تأییدکننده و hash) | — |
+
+- **پیش‌فرض:** داده در حال تکمیل **فقط در Karyar** (`Karyar Case.draft_data`) است. **قبل از تأیید هیچ سند کسب‌وکاری در ERPNext ساخته نمی‌شود.**
   - چون Karyar و ERPNext روی یک Site هستند، پرونده در جریان در Desk و در Connections اسناد مرتبط **قابل مشاهده** است.
   - اطلاعات پایه (Lead، Customer، Contact) قبل از تأیید ساخته نمی‌شوند. **استثنا:** گزینه «Lead ناقص» که برای هر Workflow قابل تنظیم و پیش‌فرض آن خاموش است.
-- **فقط دلتا:** برای موجودیت‌های موجود، پیش‌ثبت فقط ارجاع به‌علاوه داده جدید یا تغییرکرده را نگه می‌دارد.
-- **پیش‌نمایش:** محاسبات متعلق به ERPNext روی سندِ **در حافظه** و بدون ذخیره اجرا می‌شود. hash آن جزو چیزی است که تأیید می‌شود.
+- **پیش‌نمایش:** Karyar ورودی‌های Draft را به ERPNext می‌دهد. ERPNext سند را **در حافظه** و بدون ذخیره می‌سازد و محاسبات خودش را اجرا می‌کند. Karyar فقط خروجی را نمایش می‌دهد و hash آن را جزو چیزی که تأیید می‌شود قرار می‌دهد.
   - تابع عمومی پیش‌نمایش دفتر کل در v16 به سند ذخیره‌شده نیاز دارد. پس از تابع داخلی روی سندِ در حافظه استفاده می‌شود.
   - **راه جایگزین:** savepoint و سپس rollback.
   - **کار فنی فاز ۱:** آزمایش کوتاه (spike) برای Sales Invoice و Journal Entry.
-- **Promote** (تنها مسیر ثبت نهایی) به ترتیب این کارها را انجام می‌دهد:
-  1. بررسی کامل بودن طبق Schema
-  2. بررسی مجوز و وضعیت پرونده (نباید paused یا cancelled باشد)
-  3. بررسی Approval Request با **همان hash**، یا Auto-Execution Policy معتبر
-  4. محاسبه دوباره پیش‌نمایش. اگر متفاوت بود، توقف و درخواست تأیید مجدد
-  5. ثبت با کنترلرهای ERPNext و `idempotency_key`
-  6. ذخیره ارجاع در Case، و قفل کردن پیش‌ثبت به‌عنوان «منتقل‌شده»
+- **Promote** (تنها مسیر ثبت نهایی) **هیچ منطق کسب‌وکاری را محاسبه یا تکرار نمی‌کند.** فقط درخواست کنترل‌شده را به ERPNext می‌دهد. به ترتیب:
+  1. **مجوز و وضعیت پرونده** (نباید paused یا cancelled باشد)
+  2. **کامل بودن داده‌های فرایند:** فیلدهای الزامی Template. اعتبارسنجی **کسب‌وکاری** با ERPNext است
+  3. **Approval Request با همان hash**، یا Auto-Execution Policy معتبر
+  4. **رزرو `idempotency_key`** (بخش ۱۲.۵). اگر قبلاً موفق شده باشد، همان نتیجه برگردانده می‌شود و ثبت تکرار نمی‌شود
+  5. **ERPNext پیش‌نمایش را دوباره می‌سازد.** اگر نتیجه با hash تأییدشده متفاوت بود، توقف و درخواست تأیید مجدد
+  6. **فراخوانی ERPNext API** (`insert` یا `submit` یا `make_*`). ERPNext اعتبارسنجی، محاسبه و Posting می‌کند. اگر ERPNext خطا داد، خطا به Workspace برمی‌گردد و Karyar آن را دور نمی‌زند
+  7. **ذخیره ارجاع در Case** و قفل کردن Draft به‌عنوان «منتقل‌شده». قدم‌های ۴ تا ۷ در **یک تراکنش پایگاه داده** انجام می‌شوند (Site مشترک)
 - **پیش‌نویس اختیاری در ERPNext** (`erp_draft_mode`، **پیش‌فرض خاموش**):
   - فقط برای اسناد ثبت‌شدنی و فقط وقتی یک Workflow واقعاً به آن نیاز دارد.
   - Karyar یک سند با `docstatus=0` می‌سازد که `karyar_case` و `karyar_locked=1` دارد.
   - ویرایش آن در Desk با `validate` و `has_permission` مسدود است. فقط Karyar پس از تغییرِ تأییدشده آن را به‌روز می‌کند.
   - در Promote همان سند Submit می‌شود.
   - منبع ویرایش همچنان یکی است (Karyar)، پس Karyar ERP دوم نمی‌شود.
-- **پس از ثبت نهایی:** داده اصلی فقط از ERPNext خوانده می‌شود.
-  - اصلاح بعدی از طریق Change Proposal و یک اقدام کسب‌وکاری روی ERPNext انجام می‌شود.
+- **پس از ثبت نهایی:** اطلاعات نهایی در ERPNext ایجاد یا به‌روز شده است و **از این لحظه ERPNext منبع اصلی داده است.**
+  - داده اصلی فقط از ERPNext خوانده می‌شود.
+  - اصلاح بعدی از طریق Change Proposal و یک درخواست به ERPNext API انجام می‌شود (ERPNext دوباره اعتبارسنجی می‌کند).
   - لغو یا اصلاح سند (Amend) با سازوکار استاندارد ERPNext و تحت Approval Policy است.
-  - snapshot تأییدشده فقط برای ممیزی نگه داشته می‌شود.
+  - snapshot تأییدشده فقط برای ممیزی است و منبع داده نیست.
 
 ## ۱۲.۳ شناسه‌های کانال مشتری
 
@@ -623,8 +694,46 @@ A prompt can never add a permission or an approval.
 
 - `read`
 - `draft` (فقط پیش‌ثبت در Karyar)
-- `promote` (ثبت نهایی؛ همیشه از دروازه Promote)
-- `external` (Integration)
+- `promote` (ثبت نهایی؛ همیشه از دروازه Promote؛ Idempotency اجباری)
+- `external` (Integration؛ Idempotency اجباری)
+
+## ۱۲.۵ Idempotency (الزام معماری)
+
+**هدف:** Retry، تکرار رویداد، دوبار کلیک یا اجرای دوباره یک Workflow **هرگز** باعث عملیات تکراری نشود.
+
+**دامنه اجباری:**
+
+- ایجاد یا تغییر اسناد ERPNext (Promote و هر به‌روزرسانی داده نهایی)
+- عملیات مالی و حساس (Payment، Invoice، Journal Entry، لغو و Amend)
+- ارسال پیام (پیامک، WhatsApp، Telegram، بله، ایمیل؛ تکی یا انبوه)
+- Integrationهای بیرونی دارای اثر جانبی، و RPA
+- تأیید و رد، اعمال Change Proposal، و Assign
+
+**قالب کلید (Tenant-aware):**
+
+<pre class="ltr">
+{tenant}:{scope}:{operation}:{version}
+  tenant    = site name (e.g. acme.karyar.ir)            — always present, even inside one site
+  scope     = case id | agent task id | proposal id | approval request id
+  operation = e.g. promote.sales_invoice | update.contact | msg.sms
+  version   = approved draft revision / approved_hash (short)
+Messaging (per recipient):  {tenant}:{agent_task}:msg.{channel}:{contact}:{message_version}
+Examples:  acme.karyar.ir:CASE-0042:promote.sales_invoice:r7-3fa9
+           acme.karyar.ir:AT-0108:msg.sms:CONT-0311:v2
+</pre>
+
+**سازوکار:**
+
+| مورد | طراحی |
+|---|---|
+| **ثبت کلید** | **`Karyar Idempotency Record`** در سایت همان Tenant، با کلید یکتا. فیلدها: `key`، `request_hash`، `status` (`in_progress`، `succeeded`، `failed`، `unknown`)، `result_ref`، `created`، `expires` |
+| **اسناد ERPNext** | Custom Field ‏`karyar_idempotency_key` (یکتا) روی DocTypeهایی که از Promote ساخته می‌شوند. ثبت کلید، فراخوانی ERPNext API و ذخیره نتیجه در **یک تراکنش** انجام می‌شود، چون Site مشترک است. پس ثبت سند **دقیقاً یک‌بار** است |
+| **Retry با همان کلید** | اگر `succeeded` باشد، **همان نتیجه** برگردانده می‌شود و عملیات تکرار نمی‌شود. اگر `in_progress` باشد، پاسخ «در حال انجام» داده می‌شود. اگر `failed` و قابل retry باشد، اجرا با همان کلید تکرار می‌شود. اگر `request_hash` متفاوت باشد، **رد می‌شود** (تعارض) |
+| **پیام و Integration بیرونی** | n8n پیش از ارسال، کلید هر گیرنده را با `integrations.claim(key)` از Karyar رزرو می‌کند و پس از ارسال نتیجه را گزارش می‌دهد. اگر ارائه‌دهنده شناسه مرجع کلاینت را پشتیبانی کند، کلید به او هم داده می‌شود |
+| **وضعیت نامعلوم** | اگر ارسال انجام شده ولی پاسخ گم شده باشد، وضعیت `unknown` ثبت می‌شود و **ارسال خودکار تکرار نمی‌شود** (اصل «حداکثر یک‌بار» برای پیام و عملیات بیرونی). تصمیم با انسان یا Policy است |
+| **رویدادها** | مصرف‌کننده‌ها `event_id` را دوباره پردازش نمی‌کنند |
+| **نگهداری** | رکوردهای پیام و Integration حداقل به‌اندازه پنجره retry (پیش‌فرض ۳۰ روز) نگه داشته می‌شوند. کلید روی اسناد ERPNext دائمی است |
+| **تولید کلید** | Karyar کلید را می‌سازد و در رویداد یا Agent Task به n8n می‌دهد. n8n کلید نمی‌سازد، فقط آن را منتقل می‌کند |
 
 # ۱۳. Karyar API
 
@@ -633,11 +742,11 @@ A prompt can never add a permission or an approval.
   2. REST نسخه ۱ (`/api/method/karyar.api.v1.*`)
   3. MCP در آینده
 - **احراز هویت:**
-  - کلید API برای n8n، **جدا برای هر Tenant**
+  - **token کوتاه‌مدت و محدود به رویداد یا Job برای n8n.** سایت همان Tenant آن را صادر می‌کند و فقط برای همان پرونده و endpointهای مجاز معتبر است. n8n کلید API بلندمدت Tenantها را نگه نمی‌دارد
   - Session برای Workspace
   - OAuth2 برای اپ‌های بیرونی
-- **idempotency:** همه endpointهای تغییردهنده `idempotency_key` می‌پذیرند.
-- **امضا:** همه callbackها امضای HMAC دارند.
+- **Idempotency (اجباری):** همه endpointهای تغییردهنده `idempotency_key` **الزامی** دارند. درخواست بدون کلید رد می‌شود (بخش ۱۲.۵).
+- **امضا:** رویدادهای Karyar به n8n و callbackها امضای HMAC دارند.
 
 **endpointهای فاز ۱:**
 
@@ -649,14 +758,14 @@ A prompt can never add a permission or an approval.
 | Change | `changes.propose`، `confirm`، `reject` |
 | Approval | `approvals.create`، `status`، `grant`، `deny` |
 | Promote | `promote(case, operation)` (تنها مسیر ثبت نهایی) |
-| Integration | `integrations.callback(agent_task)`، `integrations.needs_input` (برای OTP و CAPTCHA در آینده) |
+| Integration | `integrations.claim(key)`، `integrations.callback(agent_task)`، `integrations.needs_input` (برای OTP و CAPTCHA در آینده) |
 
 # ۱۴. معماری گزارش‌گیری
 
 | اولویت | منبع | سازوکار |
 |---|---|---|
 | ۱ | **گزارش‌های استاندارد ERPNext** | **Report Catalog** شامل شناسه، Schema فیلترهای مجاز و ستون‌های مجاز. اجرا با `query_report.run` و هویت Principal |
-| ۲ | **گزارش‌ها و Queryهای کنترل‌شده Karyar** | تابع Python از پیش نوشته‌شده با Schema، **فقط وقتی** ERPNext گزارش معادل ندارد. مثال: «مشتریان دارای خرید در بازه X همراه با رضایت کانال» |
+| ۲ | **گزارش‌ها و Queryهای کنترل‌شده Karyar** | تابع Python از پیش نوشته‌شده با Schema، **فقط وقتی** ERPNext گزارش معادل ندارد، و **فقط برای انتخاب، فیلتر و ترکیب**. مثال: «مشتریان دارای خرید در بازه X همراه با رضایت کانال». **محاسبات مالی، انبار و ارزش‌گذاری** (سود و زیان، مانده، ارزش موجودی) **همیشه از گزارش‌های ERPNext** می‌آیند و در Karyar بازنویسی نمی‌شوند |
 | ۳ (آینده) | Frappe Insights | داشبورد برای انسان |
 | ❌ | SQL ساخته‌شده توسط AI | ممنوع |
 
@@ -703,24 +812,38 @@ price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 # ۱۷. n8n
 
 - **نقش:** فقط هماهنگی گام‌ها و اجرای Integration (بخش ۷).
-- **جداسازی Tenant:** **یک نمونه n8n برای هر Tenant** (کانتینر جدا با پایگاه داده Postgres مخصوص). دلیل این تصمیم:
-  - نسخه Community در n8n جداسازی چندمستأجری ندارد.
-  - Credentialهای Tenantها نباید کنار هم باشند.
-  - هزینه این مدل در §۲۸ (R5) ثبت شده است.
-- **Credentialها:**
-  - Credential سرویس‌های بیرونی (پیامک و…) در n8n همان Tenant ذخیره می‌شوند.
-  - Karyar فقط **نام** Integration Target را می‌شناسد.
-  - کلید Karyar API و secret مربوط به HMAC جدا برای هر Tenant است.
+
+## ۱۷.۱ مدل استقرار
+
+| حالت | کاربرد | زیرساخت |
+|---|---|---|
+| **مشترک و Tenant-aware (پیش‌فرض)** | همه Tenantها، مگر یکی از شرایط ردیف بعد برقرار باشد | یک n8n برای هر محیط (test و production) با Postgres خودش. در صورت نیاز به مقیاس: queue mode با Redis و Worker |
+| **اختصاصی برای یک Tenant (استثنا)** | فقط در صورت نیاز واقعی به: **جداسازی یا انطباق** (مثلاً داده پزشکی، قرارداد یا اقامت داده)، **Credential متعلق به خود Tenant** که نباید از مرز Tenant خارج شود، **Integration یا Workflow سفارشی** همان Tenant، یا **حجم بالا** که بر بقیه Tenantها اثر بگذارد | کانتینر و Postgres جدا. انتخاب فقط با تنظیم `n8n_endpoint` در `Karyar Settings` همان Tenant. **کد Karyar و Workflowها تغییر نمی‌کنند** |
+
+## ۱۷.۲ جداسازی Tenant در n8n مشترک
+
+| موضوع | قاعده |
+|---|---|
+| **هویت Tenant** | هر اجرا با رویدادی از سایت همان Tenant شروع می‌شود. رویداد امضای HMAC سکو، `tenant` و `callback_url` سایت را دارد. n8n فقط به `callback_url` همان رویداد پاسخ می‌دهد |
+| **دسترسی به Karyar** | **token کوتاه‌مدت و محدود به رویداد یا Job** که سایت همان Tenant صادر کرده (فقط همان پرونده و endpointهای مجاز). token یک Tenant در سایت Tenant دیگر **نامعتبر** است. n8n هیچ کلید API بلندمدت Tenantها را نگه نمی‌دارد |
+| **Credential سرویس‌های بیرونی** | (الف) **Credentialهای سکو** (حساب پیامک یا سرویس‌هایی که Karyar ارائه می‌دهد) یک‌بار در n8n مشترک تعریف می‌شوند. پارامترهای مخصوص هر Tenant (مثل شماره خط فرستنده) در رویداد می‌آیند. (ب) **Credential متعلق به خود Tenant:** در فیلد Password سایت Tenant ذخیره است و فقط **همان لحظه** با token همان Job از Karyar گرفته می‌شود. ذخیره داده اجرا برای آن Workflow خاموش است. اگر انطباق اجازه ندهد، n8n اختصاصی |
+| **داده اجرا** | payload فقط شامل ارجاع و حداقل داده است. ذخیره داده اجرای موفق خاموش، pruning کوتاه، برچسب `tenant` روی هر اجرا، و ذخیره نکردن داده اجرای Workflowهای حساس |
+| **Workflowها** | فقط Workflowهای عمومی و نسخه‌دار که پارامتر Tenant می‌گیرند. **منطق یا Workflow مخصوص یک Tenant در n8n مشترک ممنوع است** (در این حالت n8n اختصاصی) |
+| **دسترسی انسانی** | رابط کاربری n8n مشترک فقط برای تیم عملیات سکو است. Tenantها به n8n مشترک دسترسی ندارند |
+| **عدالت بین Tenantها** | Karyar ارسال رویداد و Job را برای هر Tenant محدود می‌کند (rate limit) تا یک Tenant ظرفیت n8n را اشغال نکند |
+| **Idempotency** | کلید Tenant-aware همیشه در رویداد یا Job می‌آید (بخش ۱۲.۵) |
+
+## ۱۷.۳ سایر قواعد
+
 - **شبکه:** n8n در شبکه خصوصی است و فقط مسیرهای Webhook از طریق Reverse Proxy در دسترس‌اند.
-- **داده:** pruning داده‌های اجرا فعال است و ذخیره داده اجرای جریان‌های حساس خاموش است.
-- **ساختار:** زیرWorkflow مشترک «Call Karyar» برای احراز هویت، ارسال `case_id` و مدیریت خطا، و یک Error Workflow برای هشدار.
-- **مجوز n8n:** مجوز Sustainable Use پیش از فروش تجاری باید بررسی حقوقی شود. جایگزین‌ها: Activepieces یا Node-RED.
+- **ساختار:** زیرWorkflow مشترک «Call Karyar» برای token، `case_id`، `idempotency_key` و مدیریت خطا، به‌علاوه یک Error Workflow برای هشدار.
+- **مجوز n8n:** مجوز Sustainable Use پیش از فروش تجاری باید بررسی حقوقی شود، به‌ویژه برای حالت مشترک. جایگزین‌ها: Activepieces یا Node-RED.
 
 # ۱۸. معماری RPA (آینده)
 
 - **فقط** برای سیستم‌های بدون API: پورتال‌های دولتی، بانکی، و نرم‌افزارهای قدیمی.
 - **هرگز برای ERPNext.** برای ERPNext همیشه ابزار و API استفاده می‌شود.
-- **اجرا:** یک RPA Worker جدا (Python و Playwright، در کانتینر ایزوله، بدون دسترسی به پایگاه داده). آغاز آن با Karyar به‌صورت یک `Agent Task` به یک Integration Target است. هماهنگی اجرا با n8n است.
+- **اجرا:** یک RPA Worker جدا (Python و Playwright، در کانتینر ایزوله، بدون دسترسی به پایگاه داده). آغاز آن با Karyar به‌صورت یک `Agent Task` به یک Integration Target است، **با `idempotency_key` اجباری**. هماهنگی اجرا با n8n است.
 - **CAPTCHA و OTP:**
   1. Worker اعلام `needs_input` می‌کند.
   2. Karyar یک **Human Task** گفت‌وگومحور می‌سازد.
@@ -737,7 +860,11 @@ price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 | C. یک Bench یا Stack برای هر Tenant | کامل | مشتریان بزرگ یا حساس (مثلاً پزشکی) |
 
 - **Tenant = مرز کسب‌وکار یا پروژه.** محدوده‌های داخلی (شعبه، واحد، شرکت زیرمجموعه) با User Permission کنترل می‌شوند.
-- **همه اجزای بیرونی Tenant-aware هستند:** n8n جدا برای هر Tenant، کلیدهای API و HMAC جدا، Integration Target و Credential در محدوده Tenant، و AI Gateway با Model Profile و کلید جدا.
+- **همه اجزای بیرونی Tenant-aware هستند:**
+  - n8n **مشترک** با token محدود به هر رویداد، بدون Credential بلندمدت Tenantها (بخش ۱۷.۲). n8n اختصاصی فقط در صورت نیاز
+  - Integration Target و Credential در محدوده Tenant
+  - کلید Idempotency با پیشوند Tenant
+  - AI Gateway با Model Profile و کلید جدا
 - **قواعد Bench مشترک:**
   - به مشتری Server Script، Administrator، bench یا console داده نمی‌شود.
   - کد اختصاصی یک مشتری بدون بازبینی روی Bench مشترک نصب نمی‌شود.
@@ -747,10 +874,11 @@ price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 
 | حوزه | تصمیم |
 |---|---|
-| جداسازی Tenant | مدل B یا C. هر سایت کلید رمزنگاری خودش را دارد. n8n و Credentialها جدا برای هر Tenant |
+| جداسازی Tenant | مدل B یا C. هر سایت کلید رمزنگاری و Credentialهای خودش را دارد. n8n مشترک فقط با token محدود به رویداد و بدون Credential بلندمدت Tenantها (بخش ۱۷.۲). n8n اختصاصی برای انطباق یا Credential متعلق به Tenant |
 | احراز هویت انسان | ورود Frappe. 2FA برای نقش‌های مالی و مدیریتی و برای تأیید با سطح `strong` |
 | احراز هویت مشتری | هویت کانال از `Contact Channel`. برای داده حساس، OTP |
-| احراز هویت ماشین | کلید API یا OAuth2 جدا برای هر Tenant و هر سیستم، با چرخش کلید |
+| احراز هویت ماشین | n8n: ‏token کوتاه‌مدت محدود به رویداد یا Job. اپ‌های بیرونی: OAuth2 یا کلید API جدا برای هر Tenant، با چرخش کلید |
+| تکرار عملیات | Idempotency اجباری با کلید Tenant-aware. وضعیت `unknown` برای پیام، بدون ارسال مجدد خودکار |
 | مجوز | زنجیره بخش ۱۱. ممنوعیت `ignore_permissions` و SQL در ابزارها. **Prompt مجوز یا تأیید نمی‌سازد** |
 | تصمیم و تأیید | فقط از Session کاربر احرازشده و مسئول. گره خوردن به hash. منع تأیید توسط خود. ثبت تلاش‌های غیرمجاز |
 | واگذاری | اشتراک اختیار (جلوگیری از Confused Deputy)، عمق محدود، منع چرخه |
@@ -780,6 +908,7 @@ price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 - `case.paused`، `resumed`، `cancelled`
 - `promote.succeeded`، `promote.blocked`
 - `auto_execution.by_policy`، همراه با نسخه Policy و تعریف‌کننده
+- `idempotency.replayed` (retry که نتیجه قبلی را برگرداند)، `idempotency.conflict`، `idempotency.unknown_outcome`
 - `security.out_of_scope_request`، `security.approval_missing`، `security.unauthorized_decision_attempt`
 
 **یکپارچگی و نگهداری:**
@@ -797,7 +926,7 @@ price_version, estimated_cost, currency, actual_cost (nullable), timestamp
 
 | دسته | چه چیزی | کجا | عمر |
 |---|---|---|---|
-| **پیش‌ثبت** (Draft / Pre-Registration) | داده ناقص، پیش‌نویس، تغییرات پیشنهادی (فقط دلتا) | `Karyar Case.draft_data` و نسخه‌های آن | تا Promote یا رها شدن |
+| **پیش‌ثبت** (Draft / Pre-Registration). **ERP دوم نیست** | فقط داده معلق و تأییدنشده، **دلتا** و ارجاع، وضعیت فرایند، و پیش‌نمایشی که ERPNext ساخته است. **بدون کپی کامل اسناد پایه یا کسب‌وکاری** (بخش ۱۲.۲) | `Karyar Case.draft_data` و نسخه‌های آن | تا Promote یا رها شدن |
 | **Context تعامل** | پیام‌ها و خلاصه‌ها | `Conversation` و `Message` در Karyar. **خلاصه نهایی در Timeline ‏ERPNext** (`Communication`) | طبق سیاست نگهداری |
 | **فرایند و ممیزی** | مرحله پرونده، ارجاع به اسناد ERPNext، Proposalها، Approvalها، Agent Taskها، ممیزی و مصرف AI | Karyar | دائمی |
 | **داده نهایی کسب‌وکار** | Lead، Customer، Contact (و `Contact Channel`)، سفارش، فاکتور، اسناد حسابداری و انبار، Campaign | **ERPNext** | دائمی (Final Truth) |
@@ -811,8 +940,8 @@ conversation → Karyar draft (revisions) → [customer confirmation?] → [Appr
 
 **قواعد:**
 
-1. پیش‌ثبت فقط **دلتا** و ارجاع نگه می‌دارد. کپی از داده پایه ERPNext ممنوع است.
-2. **پس از Promote**، ایجنت داده را فقط از ERPNext می‌خواند. پیش‌ثبتِ قفل‌شده و snapshot در دسترس ابزارهای ایجنت نیستند.
+1. پیش‌ثبت فقط **دلتا** و ارجاع نگه می‌دارد. کپی کامل Customer، Lead، Invoice، Order یا هر داده پایه یا سند ERPNext ممنوع است. Karyar هیچ مقدار کسب‌وکاری (مالیات، جمع، قیمت) را خودش محاسبه نمی‌کند.
+2. **پس از Promote**، اطلاعات نهایی در ERPNext ایجاد یا به‌روز شده و ERPNext منبع اصلی داده است. ایجنت داده را فقط از ERPNext می‌خواند. پیش‌ثبتِ قفل‌شده و snapshot در دسترس ابزارهای ایجنت نیستند.
 3. **خلاصه گفت‌وگو** قصد، ترجیحات، سؤال‌های باز و قول‌های داده‌شده را نگه می‌دارد. واقعیت‌های کسب‌وکاری در خلاصه با برچسب «طبق گفته مشتری در تاریخ X» ثبت می‌شوند و منبع معتبر نیستند.
 4. **پیش‌ثبت رهاشده:** پس از مدت نگهداری Workflow (پیش‌فرض ۳۰ روز، قابل تنظیم)، پرونده با وضعیت `abandoned` بسته و داده شخصی پاک می‌شود. اگر گزینه «Lead ناقص» برای آن Workflow روشن باشد، قبل از پاک‌سازی Lead ناقص ساخته می‌شود (این گزینه پیش‌فرض خاموش است و تحت Policy قرار دارد).
 5. **n8n هیچ‌وقت پیش‌ثبت نگه نمی‌دارد.**
@@ -825,7 +954,7 @@ conversation → Karyar draft (revisions) → [customer confirmation?] → [Appr
 | `karyar` | اپ اصلی | ۱ |
 | `karyar_iran` | بومی‌سازی ایران | ۱ (مبانی) و ۲ |
 | `karyar_hr_ir` | حقوق و بیمه ایران روی HRMS | آینده |
-| `karyar-deploy` | `apps.json` پین‌شده، Docker و compose، اسکریپت راه‌اندازی Tenant (سایت، اپ‌ها، Pack، n8n)، Workflowهای n8n، Packها، runbookها | ۰ تا ۱ |
+| `karyar-deploy` | `apps.json` پین‌شده، Docker و compose (شامل n8n مشترک)، اسکریپت راه‌اندازی Tenant (سایت، اپ‌ها، Pack، و در صورت نیاز n8n اختصاصی)، Workflowهای n8n نسخه‌دار، Packها، runbookها | ۰ تا ۱ |
 | `karyar-rpa-worker` | RPA | آینده |
 
 <pre class="ltr">
@@ -835,15 +964,15 @@ karyar/karyar/
 ├── karyar_agents/        Karyar Agent, Responsibility, Capability, Role Assignment, Prompt Template, Model Profile
 ├── karyar_cases/         Karyar Case, Human Task, Human Task Template, Approval Request, Agent Task
 ├── karyar_conversations/ Conversation, Message, Channel Account
-├── karyar_audit/         Karyar Audit Log, AI Usage Log, Model Price
+├── karyar_audit/         Karyar Audit Log, AI Usage Log, Model Price, Karyar Idempotency Record
 ├── karyar_settings/      Karyar Settings (+ policy tables: approval, auto-execution, delegation,
-│                         retention, integration targets)
-├── fixtures/             Custom Field: Contact Channel (child of Contact), idempotency/karyar_case fields
+│                         retention, integration targets, n8n_endpoint)
+├── fixtures/             Custom Field: Contact Channel (child of Contact), karyar_idempotency_key, karyar_case
 ├── tools/ channels/ api/v1/ packs/ workspace/ (SPA) commands/ locale/fa.po tests/
 </pre>
 
 - **حذف‌شده نسبت به نسخه ۰٫۱:** `Contact Identity`، و ماژول‌های Workflow Engine و Event (`Workflow Definition`، `Workflow Run`، `Step Run`، `Timer`، `Karyar Event`).
-- **DocTypeهای Karyar:** Agent، Responsibility، Capability، Role Assignment، Prompt Template، Model Profile، Case، Human Task، Human Task Template، Approval Request، Agent Task، Conversation، Message، Channel Account، Audit Log، AI Usage Log، Model Price، Settings.
+- **DocTypeهای Karyar:** Agent، Responsibility، Capability، Role Assignment، Prompt Template، Model Profile، Case، Human Task، Human Task Template، Approval Request، Agent Task، Conversation، Message، Channel Account، Audit Log، AI Usage Log، Model Price، Idempotency Record، Settings. **هیچ‌کدام کپی DocTypeهای کسب‌وکاری ERPNext نیست.**
 
 # ۲۴. معماری استقرار
 
@@ -855,7 +984,9 @@ nginx (TLS, per-tenant hostnames)
  ├─ workers: short, default, long, karyar_agent (concurrency-limited)
  ├─ scheduler
  ├─ MariaDB (one DB per site) · redis-cache · redis-queue
- ├─ n8n per tenant (+ its Postgres), private network, webhooks via reverse proxy
+ ├─ n8n SHARED + tenant-aware (+ its Postgres; queue mode + workers when needed),
+ │    private network, webhooks via reverse proxy
+ ├─ n8n DEDICATED (only for a tenant that needs isolation/compliance/custom integration)
  └─ encrypted backups → S3-compatible storage
 </pre>
 
@@ -871,7 +1002,7 @@ nginx (TLS, per-tenant hostnames)
   - کش کوتاه‌مدت برای ابزارهای خواندنی
 - **افقی:** Worker و gunicorn بیشتر. Workerهای ایجنت مستقل مقیاس می‌گیرند.
 - **پایگاه داده:** Prepared Report، replica برای گزارش، و انتقال Tenant پرمصرف به Bench جدید.
-- **n8n جدا برای هر Tenant** به‌صورت طبیعی افقی است. هزینه آن در §۲۸.
+- **n8n مشترک:** با queue mode (Redis و Workerهای n8n) افقی مقیاس می‌گیرد. Karyar برای هر Tenant محدودیت نرخ ارسال اعمال می‌کند. Tenant پرحجم به n8n اختصاصی منتقل می‌شود (فقط تغییر `n8n_endpoint`).
 - **سرویس جدا** فقط وقتی ساخته می‌شود که اندازه‌گیری نشان دهد لازم است.
 
 # ۲۶. راهبرد ارتقا
@@ -906,8 +1037,10 @@ nginx (TLS, per-tenant hostnames)
 | R1 | دسترسی و قانونی بودن ارائه‌دهندگان AI از ایران | بالا | AI Gateway، مدل خودمیزبان، طبقه‌بندی داده، بررسی حقوقی |
 | R2 | محدودیت کانال‌ها: فیلتر شدن؛ API ‏Meta برای کسب‌وکار ایرانی؛ قالب پیام و رضایت در WhatsApp؛ پنجره پاسخ Instagram؛ ربات Telegram و بله فقط برای کاربرانی که ربات را آغاز کرده‌اند | بالا | شروع با وب و بله. اعلام محدودیت‌ها در هر Integration Target. داده رضایت در `Contact Channel` |
 | R3 | منطق ترتیبی در n8n سخت‌تر تست و بازبینی می‌شود | متوسط | export به git، README، منطق در Karyar، n8n جدا برای test |
-| R4 | رویداد گم‌شده (Webhook در Frappe retry خودکار ندارد) | متوسط | لاگ شکست، جست‌وجوی پرونده‌های بی‌حرکت، و در آینده Outbox |
-| R5 | هزینه عملیاتی **n8n جدا برای هر Tenant** | متوسط | کانتینر سبک. ارزیابی دوباره پس از چند مشتری (n8n Enterprise، یا موتور داخلی) |
+| R4 | رویداد گم‌شده یا تکراری | متوسط | `emit_event` با retry، رویداد `stale_case_sweep`، **Idempotency** برای رویدادهای تکراری، و در آینده Outbox |
+| R5 | **n8n مشترک:** اثر شکست یا بار یک Tenant بر بقیه، و نشت داده بین Tenantها | متوسط | token محدود به رویداد، بدون Credential بلندمدت Tenant، داده اجرای حداقلی، محدودیت نرخ برای هر Tenant، queue mode، و n8n اختصاصی برای Tenantهای حساس یا پرحجم |
+| R16 | **عملیات تکراری در Retry** (سند، پیام یا پرداخت تکراری) | بالا | Idempotency اجباری با کلید Tenant-aware، ثبت در یک تراکنش با ERPNext، و وضعیت `unknown` بدون ارسال مجدد خودکار |
+| R17 | **Karyar به‌تدریج به ERP دوم تبدیل شود** (کپی داده یا بازنویسی محاسبات) | بالا | قواعد §۱۲.۰ و §۱۲.۲، بازبینی کد، و ممنوعیت محاسبه و Posting در Karyar |
 | R6 | برداشت اشتباه ایجنت در دستورهای گفت‌وگومحور | بالا | Change Proposal با Diff و تأیید صریح؛ hash |
 | R7 | خستگی کاربر از تأییدهای زیاد | متوسط | دسته‌بندی تغییرها در یک Proposal. تعریف دقیق «تغییر حساس». ذخیره فرم به‌عنوان تأیید |
 | R8 | زنجیره واگذاری و افزایش اختیار | بالا | اشتراک اختیار، عمق محدود، Delegation Policy، ممیزی |
@@ -954,7 +1087,7 @@ nginx (TLS, per-tenant hostnames)
 
 ## مثال ۱ — مشتری ← Ava ← تأیید مشتری ← بازبینی کارمند ← Lead در ERPNext ← Hanna (کلینیک)
 
-<div class="flow"><span>مشتری در Karyar</span><span>Ava: پیش‌ثبت</span><span>تأیید مشتری</span><span>Workspace کارمند</span><span>Promote: Lead</span><span>Webhook</span><span>n8n</span><span>Hanna</span></div>
+<div class="flow"><span>مشتری در Karyar</span><span>Ava: پیش‌ثبت</span><span>تأیید مشتری</span><span>Workspace کارمند</span><span>Promote: Lead</span><span>emit_event</span><span>n8n</span><span>Hanna</span></div>
 
 | مورد | جزئیات |
 |---|---|
@@ -964,8 +1097,8 @@ nginx (TLS, per-tenant hostnames)
 | **Event** | `intake.completed` (پس از تأیید مشتری، به hash ‏h1 گره خورده) |
 | **Workflow steps** | n8n: ‏`human_tasks.create(template=staff_review)`، پایان. سپس رویداد `human_task.decided`. n8n: ‏`promote(case, crm.lead)`، سپس `agents.run_task(sales)` |
 | **Human interaction** | کارمند پذیرش: «سن اشتباه است، ۳۸ کن». ایجنت Diff را نشان می‌دهد («سن: ۳۶ ← ۳۸؛ تأیید؟») و کارمند تأیید می‌کند. نسخه ۲ ثبت می‌شود. «شماره ثابت ندارد؛ از مشتری بگیر». یک Agent Task برای Ava ساخته می‌شود، Ava از مشتری می‌پرسد و نسخه ۳ با منبع «مشتری» ثبت می‌شود. کارمند: «بفرست مرحله بعد». Approval Policy عملیات `crm.lead` تک‌نفره است، پس تصمیم `approved` با hash ‏h3 ثبت می‌شود |
-| **ERPNext action** | Promote: ‏Lead و Contact با کنترلرهای ERPNext، و ردیف `Contact Channel` (instagram) با رضایت. خلاصه گفت‌وگو در Timeline ‏Lead (`Communication` با medium برابر Chat) |
-| **Next agent** | Webhook استاندارد `erp.lead.created`، سپس n8n، سپس `agents.run_task(sales)` برای **Hanna** |
+| **ERPNext action** | Promote (کلید `{tenant}:CASE:promote.crm_lead:r3`) از طریق ERPNext API: ‏Lead و Contact، و ردیف `Contact Channel` (instagram) با رضایت. **اعتبارسنجی با خود ERPNext.** اگر n8n فراخوانی را retry کند، همان Lead برگردانده می‌شود و Lead تکراری ساخته نمی‌شود. خلاصه گفت‌وگو در Timeline ‏Lead (`Communication` با medium برابر Chat) |
+| **Next agent** | `doc_events` روی Lead، سپس `emit_event(erp.lead.created)` همراه با token، سپس n8n مشترک، سپس `agents.run_task(sales)` برای **Hanna** |
 | **Final result** | Lead در ERPNext. Hanna پیگیری را آغاز می‌کند و یک ToDo استاندارد برای مشاور می‌سازد. هیچ‌کس پرونده را دستی منتقل نکرد |
 
 ## مثال ۲ — Hanna ← سفارش ← تأیید پرداخت ← Arman ← تأیید چندمرحله‌ای ← سند حسابداری
@@ -977,7 +1110,7 @@ nginx (TLS, per-tenant hostnames)
 | **Data** | پیش‌ثبت سفارش در Karyar، همراه با **پیش‌نمایش ERPNext بدون ذخیره** (قیمت، مالیات، جمع) و hash آن |
 | **Workflow steps** | **(الف)** n8n: ‏`promote(case, selling.sales_order)`. یک **Auto-Execution Policy** («سفارش تا سقف X برای مشتری عادی»، نسخه ۳، تعریف‌شده توسط مدیر فروش) آن را مجاز می‌کند. بعد `human_tasks.create(payment_confirm)` برای صندوق‌دار. **(ب)** ‏`human_task.decided`، سپس n8n: ‏`agents.run_task(accounting)` |
 | **Human interaction** | صندوق‌دار اطلاعات پرداخت را به‌صورت گفت‌وگو وارد می‌کند (Change Proposal و تأیید). Arman پیش‌ثبت Payment Entry و Sales Invoice را با **پیش‌نمایش دفتر کل** آماده می‌کند. **Approval Request ترتیبی:** حسابدار، سپس مدیر مالی (`strong`). حسابدار: «حساب بانک را ملت بگذار». با Diff و تأیید، **تأییدهای قبلی باطل می‌شوند** و تأیید مجدد گرفته می‌شود |
-| **ERPNext action** | Promote: ‏Payment Entry و Sales Invoice با Submit. ثبت‌های دفتر کل را **خود ERPNext** می‌سازد. فاکتور با ایمیل استاندارد ERPNext و Print Format برای مشتری ارسال می‌شود |
+| **ERPNext action** | Promote از طریق ERPNext API با یک کلید Idempotency برای هر سند (مثلاً `{tenant}:CASE:promote.payment_entry:r5`): ‏Payment Entry و Sales Invoice با Submit. **اعتبارسنجی، مالیات، جمع و ثبت‌های دفتر کل را خود ERPNext** انجام می‌دهد. Retry سند تکراری نمی‌سازد. فاکتور با ایمیل استاندارد ERPNext و Print Format برای مشتری ارسال می‌شود |
 | **Event** | `erp.sales_invoice.submitted` |
 | **Next agent** | (آینده) فرایند مودیان در `karyar_iran` |
 | **Final result** | سند مالی فقط پس از کامل شدن Approval با همان hash ثبت شد. ممیزی کامل است |
@@ -997,7 +1130,7 @@ nginx (TLS, per-tenant hostnames)
 
 | مورد | جزئیات |
 |---|---|
-| **Trigger** | ERPNext بر اساس **سطح سفارش مجدد استاندارد** یک Material Request می‌سازد. Webhook ‏`erp.material_request.submitted` به n8n می‌رود |
+| **Trigger** | ERPNext بر اساس **سطح سفارش مجدد استاندارد** یک Material Request می‌سازد. `doc_events` و `emit_event(erp.material_request.submitted)` آن را به n8n می‌فرستند |
 | **Agent** | ایجنت نقش `inventory` |
 | **Data** | پیش‌ثبت Purchase Order در Karyar، با پیش‌نمایش. تأمین‌کننده و قیمت از گزارش‌های استاندارد خرید |
 | **Workflow steps** | n8n: ‏`agents.run_task(inventory)`، سپس `approvals.create(policy=po_over_threshold)` |
@@ -1014,11 +1147,11 @@ nginx (TLS, per-tenant hostnames)
 |---|---|
 | **Trigger** | پیام پخش‌کننده در بله. مخاطب از روی `Contact Channel` (bale) شناسایی می‌شود |
 | **Agent** | Ava (`b2b_order_intake`)، سپس نیما، سپس کیفیت، سپس Ava (اعلان) |
-| **Data** | پیش‌ثبت Sales Order. قیمت از Price List و اعتبار از Credit Limit استاندارد |
-| **Workflow steps** | Auto-Execution Policy برای «مشتری معتبر و درون سقف اعتبار»، سپس Promote ‏Sales Order، سپس Webhook و n8n، سپس نیما (موجودی پیش‌بینی‌شده استاندارد). در صورت کمبود: پیش‌ثبت Work Order و Approval سرپرست تولید، سپس Promote. پس از رویداد Stock Entry ‏Manufacture: ایجنت کیفیت، سپس Quality Inspection |
+| **Data** | پیش‌ثبت Sales Order (فقط قلم‌ها و مقادیر، و ارجاع به Customer). قیمت در پیش‌نمایش ERPNext از Price List محاسبه می‌شود |
+| **Workflow steps** | Auto-Execution Policy برای «مشتری در گروه معتبر و مبلغ تا سقف X»، سپس Promote ‏Sales Order. **کنترل Credit Limit را خود ERPNext هنگام ثبت انجام می‌دهد.** اگر ERPNext رد کند، یک Human Task برای مدیر فروش ساخته می‌شود. سپس `emit_event` و n8n، سپس نیما (موجودی پیش‌بینی‌شده استاندارد). در صورت کمبود: پیش‌ثبت Work Order و Approval سرپرست تولید، سپس Promote. پس از رویداد Stock Entry ‏Manufacture: ایجنت کیفیت، سپس Quality Inspection |
 | **Human interaction** | سرپرست تولید: «بگذار برای شیفت فردا صبح» (Change Proposal و تأیید). تکنسین کیفیت: «pH ‏۴٫۲، بریکس ۲۸». ایجنت مقادیر را با **قالب بازرسی کیفیت استاندارد ERPNext** مقایسه می‌کند و تکنسین تأیید می‌کند. انباردار: «بار زده شد» |
-| **ERPNext action** | Sales Order، Work Order، Stock Entry، Quality Inspection و Delivery Note. **همه با کنترلرهای ERPNext** |
-| **Next agent** | Ava از Channel Gateway در بله به مشتری اطلاع می‌دهد. ایجنت مدیریت با Cron در n8n هر روز گزارش خلاصه را برای مدیر می‌فرستد و پرسش‌ها را **با مجوز خود مدیر** پاسخ می‌دهد |
+| **ERPNext action** | Sales Order، Work Order، Stock Entry، Quality Inspection و Delivery Note. **همه از طریق ERPNext API**، با اعتبارسنجی، محاسبه و Posting خود ERPNext و با کلید Idempotency برای هر سند |
+| **Next agent** | Ava از Channel Gateway در بله به مشتری اطلاع می‌دهد. ایجنت مدیریت با رویداد زمان‌بندی‌شده `schedule.daily_brief` (از Scheduler خود Frappe به n8n) هر روز گزارش خلاصه **ERPNext** را برای مدیر می‌فرستد و پرسش‌ها را **با مجوز خود مدیر** پاسخ می‌دهد |
 | **Final result** | همان موتور و همان ابزارها، با ترکیب کاملاً متفاوت |
 
 ## مثال ۶ — درخواست غیرمجاز
@@ -1041,7 +1174,7 @@ Prompt Injection نتیجه را تغییر نمی‌دهد.
 | **Data** | گزارش کنترل‌شده «مشتریان دارای فاکتور در بازه X به‌همراه رضایت کانال»، روی Sales Invoice و `Contact Channel`. خروجی: **ارجاع به Contactها**، نه کپی. حذف کسانی که انصراف داده‌اند |
 | **Human interaction** | متن پیام پیشنهاد می‌شود و هر اصلاح آن Change Proposal است. **Approval ‏M از N** (مدیر و مسئول بازاریابی) به hash «فهرست و متن» گره می‌خورد |
 | **ERPNext action** | Promote: رکورد **`Campaign` استاندارد ERPNext** |
-| **Delegation** | طبق Delegation Policy (مدیریت به `messaging.sms.bulk_send`)، یک `Agent Task` ساخته می‌شود. n8n ارسال را **دسته‌ای** و با رعایت نرخ و انصراف انجام می‌دهد. وضعیت هر گیرنده با callback به Karyar برمی‌گردد |
+| **Delegation** | طبق Delegation Policy (مدیریت به `messaging.sms.bulk_send`)، یک `Agent Task` ساخته می‌شود. n8n مشترک ارسال را **دسته‌ای** و با رعایت نرخ و انصراف انجام می‌دهد. **کلید Idempotency برای هر گیرنده:** `{tenant}:AT-…:msg.sms:{contact}:v2`. پیش از هر ارسال `integrations.claim` انجام می‌شود. Retry به هیچ گیرنده‌ای پیام دوم نمی‌فرستد. در وضعیت نامعلوم، ارسال مجدد خودکار نیست. وضعیت هر گیرنده با callback به Karyar برمی‌گردد |
 | **Final result** | گزارش ارسال در Workspace. خلاصه در Timeline رکورد Campaign. ممیزی کامل. همین الگو برای WhatsApp، Telegram، Instagram و بله با Integration Target دیگر کار می‌کند (با محدودیت‌های R2) |
 
 # ۳۲. جدول تصمیم‌های معماری
@@ -1050,7 +1183,10 @@ Prompt Injection نتیجه را تغییر نمی‌دهد.
 
 | تصمیم | دلیل | جایگزین ردشده | قابل تغییر؟ |
 |---|---|---|---|
-| ERPNext موتور منطق و منبع نهایی حقیقت؛ ERPNext-first | جلوگیری از ERP دوم | منطق موازی در Karyar | خیر |
+| ERPNext منبع اصلی Business Logic و Business Truth؛ اعتبارسنجی، محاسبه و Posting فقط در ERPNext؛ مسیر: Karyar (مجوز، Policy، تأیید) ← ERPNext API ← ERPNext | جلوگیری از ERP دوم و دوگانگی منطق | منطق موازی در Karyar | خیر |
+| Draft در Karyar ERP دوم نیست: فقط داده معلق، دلتا، وضعیت فرایند و Context | یک منبع حقیقت | کپی کامل اسناد در Karyar | خیر |
+| Idempotency اجباری با کلید Tenant-aware (`tenant:scope:operation:version`) | جلوگیری از سند، پیام یا پرداخت تکراری | retry بدون کنترل | خیر |
+| n8n مشترک و Tenant-aware به‌صورت پیش‌فرض؛ اختصاصی فقط برای نیاز واقعی | کمترین هزینه عملیاتی بدون کاهش جداسازی | n8n جدا برای هر Tenant | بله (هر Tenant با یک تنظیم) |
 | Karyar: ایجنت، گفت‌وگو، Workspace، کنترل، مجوز، ممیزی، مصرف AI، فرایند | مرز روشن | — | خیر |
 | n8n فقط برای هماهنگی و اجرای Integration | منطق و مجوز متمرکز در Karyar | منطق در n8n | با موتور داخلی در آینده |
 | گفت‌وگوی زنده، اجرای ایجنت، تصمیم، مجوز، Human Task و عملیات نهایی در Karyar | کنترل | در n8n | خیر |
@@ -1076,7 +1212,7 @@ Prompt Injection نتیجه را تغییر نمی‌دهد.
 |---|---|---|---|
 | پایه ERPNext و Frappe v16 با MariaDB | پایدار؛ Postgres در v16 رسمی نیست | develop، v15 | بله (v17) |
 | مدل B (سایت برای هر Tenant) و C برای حساس‌ها | جداسازی پایگاه داده با هزینه معقول | A | بله |
-| n8n جدا برای هر Tenant | n8n Community جداسازی ندارد | n8n مشترک | بله (Enterprise یا موتور داخلی) |
+| token محدود به رویداد برای n8n، و triggerهای n8n از `emit_event` (نه Webhook DocType) | n8n مشترک نباید کلید بلندمدت Tenantها را نگه دارد | کلید API برای هر Tenant در n8n | بله |
 | چند مخزن و `karyar-deploy`؛ یک اپ `karyar` با ماژول‌ها | سازوکار bench و سادگی | تک‌مخزن یا چند اپ | دشوار |
 | `Responsibility` برای ایجنت و انسان | یک مفهوم برای هر دو | جدا | بله |
 | `ToDo`، Email، SMS Settings و `Communication` استاندارد | ERPNext-first | ساختن سیستم موازی | بله |
@@ -1110,21 +1246,33 @@ Prompt Injection نتیجه را تغییر نمی‌دهد.
 | تأییدهای Frappe Workflow و Karyar روی یک سند | Frappe Workflow فقط برای اسناد ساخته‌شده در Desk |
 | ساختن سیستم اعلان، تخصیص و تاریخچه موازی | `ToDo`، Notification، Email، SMS Settings، `Communication` و `Version` |
 
-**باقی‌مانده:** **هیچ تعارض فنی بازی** که بدون تصمیم جدید حل نشود وجود ندارد. تنش‌های باقی‌مانده به هزینه یا حقوق مربوط‌اند، نه به معماری: هزینه n8n جدا برای هر Tenant (R5)، مجوز SUL در n8n (R13)، و محدودیت کانال‌ها (R2).
+**حل‌شده در نسخه ۱٫۱:**
+
+| تعارض در نسخه ۱٫۰ | اصلاح در نسخه ۱٫۱ |
+|---|---|
+| Promote «کامل بودن طبق Schema» را بررسی می‌کرد (احتمال تکرار اعتبارسنجی ERPNext) | فقط کامل بودن داده‌های **فرایند** در Karyar. اعتبارسنجی کسب‌وکاری فقط با ERPNext (§۱۲.۲) |
+| مثال ۵: Policy با شرط «درون سقف اعتبار» (بازنویسی کنترل Credit Limit) | شرط Policy فقط گروه مشتری و سقف مبلغ است. Credit Limit را خود ERPNext هنگام ثبت کنترل می‌کند |
+| Queryهای کنترل‌شده Karyar بدون مرز روشن با محاسبات ERP | فقط انتخاب، فیلتر و ترکیب. محاسبات مالی، انبار و ارزش‌گذاری از گزارش‌های ERPNext |
+| `idempotency_key` اختیاری و بدون قالب | الزام معماری، کلید Tenant-aware، رکورد Idempotency، و اتمی بودن با ERPNext (§۱۲.۵) |
+| n8n جدا برای هر Tenant (هزینه بالا) | n8n مشترک و Tenant-aware. اختصاصی فقط برای نیاز واقعی (§۱۷) |
+| کلید API بلندمدت هر Tenant در n8n، و Webhook DocType به‌عنوان trigger | token محدود به هر رویداد. triggerها از `doc_events`، `emit_event` و Scheduler خود Frappe (§۹) |
+| Cron در n8n (بدون هویت Tenant) | `scheduler_events` در سایت هر Tenant، که رویداد زمان‌بندی‌شده می‌فرستد |
+
+**باقی‌مانده:** **هیچ تعارض فنی بازی** که بدون تصمیم جدید حل نشود وجود ندارد. تنش‌های باقی‌مانده به هزینه یا حقوق مربوط‌اند، نه به معماری: مجوز SUL در n8n برای حالت مشترک (R13)، و محدودیت کانال‌ها (R2).
 
 # ۳۴. خروجی نهایی
 
 ## ۳۴.۱ معماری در یک نگاه
 
-- **ERPNext (v16):** منطق و حقیقت نهایی کسب‌وکار.
-- **Karyar:** لایه هوشمند، کنترل‌کننده و رابط. شامل ایجنت، گفت‌وگو، Workspace، Change Proposal، Approval، واگذاری، مجوز، Promote، ممیزی و مصرف AI.
-- **n8n (برای هر Tenant):** هماهنگی گام‌ها و اجرای Integration.
+- **ERPNext (v16):** منبع اصلی Business Logic و Business Truth: اعتبارسنجی، محاسبه، Posting و ثبت نهایی.
+- **Karyar:** لایه هوشمند و کنترل‌گر، و رابط انسان و ایجنت. شامل ایجنت، گفت‌وگو، Workspace، Change Proposal، Approval، واگذاری، مجوز، Idempotency، Promote (فقط درخواست به ERPNext API)، وضعیت فرایند، ممیزی و مصرف AI. **Draft آن ERP دوم نیست.**
+- **n8n (مشترک و Tenant-aware؛ اختصاصی در صورت نیاز):** هماهنگی گام‌ها و اجرای Integration.
 
 ## ۳۴.۲ توضیح ساده
 
 - **ERPNext دفتر رسمی و حسابدار شرکت است.** فقط آنچه آنجا ثبت شود واقعی است و محاسبات را خودش انجام می‌دهد.
 - **Karyar میز کار هوشمند است.** ایجنت‌ها با مشتری و کارکنان حرف می‌زنند، پیش‌نویس آماده می‌کنند و تغییر پیشنهاد می‌دهند.
-- **انسان در Workspace گفت‌وگو می‌کند، تأیید می‌کند و کار را هدایت می‌کند.** فقط بعد از تأیید (یا Policy مصوب) و فقط از دروازه Promote، سند در ERPNext ثبت می‌شود.
+- **انسان در Workspace گفت‌وگو می‌کند، تأیید می‌کند و کار را هدایت می‌کند.** فقط بعد از تأیید (یا Policy مصوب) و فقط از دروازه Promote، Karyar درخواست را به ERPNext می‌دهد. **ERPNext خودش بررسی، محاسبه و ثبت می‌کند**، و هر درخواست فقط یک‌بار اجرا می‌شود.
 - **n8n زنگ مرحله بعد را می‌زند و پیامک‌ها را می‌فرستد**، ولی تصمیم نمی‌گیرد.
 
 ## ۳۴.۳ نمودار اصلی
@@ -1137,7 +1285,7 @@ Prompt Injection نتیجه را تغییر نمی‌دهد.
 
 ## ۳۴.۵ ریسک‌های بزرگ
 
-R1 (AI در ایران)، R2 (کانال‌ها)، R6 و R8 (برداشت اشتباه و افزایش اختیار)، R5 (هزینه n8n)، R11 (Prompt Injection).
+R1 (AI در ایران)، R2 (کانال‌ها)، R6 و R8 (برداشت اشتباه و افزایش اختیار)، R16 (عملیات تکراری)، R17 (تبدیل Karyar به ERP دوم)، R11 (Prompt Injection).
 
 ## ۳۴.۶ نقشه راه
 
@@ -1145,8 +1293,8 @@ R1 (AI در ایران)، R2 (کانال‌ها)، R6 و R8 (برداشت اشت
 
 | فاز | محتوا | معیار خروج |
 |---|---|---|
-| **۰. پایه** (۱ تا ۲ هفته) | پاسخ به تصمیم‌های باز فوری (§۲۹: ۱ تا ۵). انتقال fork به `version-16`. ساخت `karyar` و `karyar-deploy`. bench توسعه (v16 و HRMS). n8n برای Tenant توسعه. CI با semgrep | اپ خالی نصب می‌شود و CI سبز است |
-| **۱. هسته** (۶ تا ۸ هفته) | DocTypeهای §۲۳. زنجیره مجوز و Tool Executor. AI Gateway با UsageRecord و سقف سخت. Agent Runtime. Channel Gateway (وب و بله). Case و پیش‌ثبت و نسخه‌ها. Change Proposal. **Approval یکپارچه**. Agent Task و Delegation Policy. Promote به‌همراه spike پیش‌نمایش. API v1. `emit_event` و Webhookهای Frappe. Workspace نسخه ۰ (گفت‌وگو و پنل). `Contact Channel`. مبانی `karyar_iran` | گردش نمونه سرتاسری؛ تست‌های مجوز، واگذاری و Approval پاس می‌شوند |
+| **۰. پایه** (۱ تا ۲ هفته) | پاسخ به تصمیم‌های باز فوری (§۲۹: ۱ تا ۵). انتقال fork به `version-16`. ساخت `karyar` و `karyar-deploy`. bench توسعه (v16 و HRMS). n8n مشترک توسعه. CI با semgrep (ممنوعیت SQL، `ignore_permissions` و `db_set` کسب‌وکاری) | اپ خالی نصب می‌شود و CI سبز است |
+| **۱. هسته** (۶ تا ۸ هفته) | DocTypeهای §۲۳. زنجیره مجوز و Tool Executor. AI Gateway با UsageRecord و سقف سخت. Agent Runtime. Channel Gateway (وب و بله). Case و پیش‌ثبت (فقط دلتا) و نسخه‌ها. Change Proposal. **Approval یکپارچه**. Agent Task و Delegation Policy. **Idempotency Registry**. Promote (ERPNext API) به‌همراه spike پیش‌نمایش. API v1 با token محدود به رویداد. `emit_event` و Scheduler. Workspace نسخه ۰ (گفت‌وگو و پنل). `Contact Channel`. مبانی `karyar_iran` | گردش نمونه سرتاسری؛ تست‌های مجوز، واگذاری، Approval و **Retry بدون تکرار** پاس می‌شوند |
 | **۲. پایلوت** (۴ تا ۶ هفته) | Pack صنعت پایلوت. مثال ۱ سرتاسری. ۳ تا ۵ Workflow در n8n. Report Catalog. پیامک | پایلوت داخلی و بازبینی امنیتی |
 | **۳. مالی و استحکام** (۴ تا ۶ هفته) | مثال ۲ (Approval ترتیبی و `strong`). داشبورد پرونده‌های بی‌حرکت. پشتیبان‌گیری و بازیابی. تست بار. staging. Print Formatهای فارسی | چک‌لیست راه‌اندازی |
 | **۴. اولین مشتری** | Pack به‌همراه ۲۰٪ پیکربندی. پشتیبانی فشرده. اندازه‌گیری هزینه و زمان‌ها | مشتری فعال |
@@ -1154,4 +1302,4 @@ R1 (AI در ایران)، R2 (کانال‌ها)، R6 و R8 (برداشت اشت
 
 ---
 
-<p class="endnote">نسخه ۱٫۰ — جایگزین نسخه ۰٫۱ و همه تغییرات ثبت‌شده در PENDING_CHANGES (CR-01 تا CR-04). منابع: بررسی مستقیم کد این مخزن و کد Frappe و ERPNext نسخه ۱۶، مستندات n8n، issue شماره 56241 در frappe/erpnext، مخزن frappe/mcp.</p>
+<p class="endnote">نسخه ۱٫۱ (۹ مهر ۱۴۰۵) — نسخه ۱٫۰ به‌علاوه چهار اصلاح نهایی (CR-05). جایگزین نسخه‌های ۰٫۱ و ۱٫۰ و همه تغییرات ثبت‌شده در PENDING_CHANGES. منابع: بررسی مستقیم کد این مخزن و کد Frappe و ERPNext نسخه ۱۶، مستندات n8n، issue شماره 56241 در frappe/erpnext، مخزن frappe/mcp.</p>
